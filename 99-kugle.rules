@@ -1,0 +1,11 @@
+# Place in folder: "/etc/udev/rules.d/"
+# Print info of connected USB devices by using the command: "udevadm info -a -p /sys/bus/usb/devices/1-1"   (or try with other endings: 1-1, 2-1, 3-1 etc.)
+# Or by using: "udevadm info -a -p  $(udevadm info -q path -n /dev/ttyACM0)"
+# See https://unix.stackexchange.com/questions/66901/how-to-bind-usb-device-under-a-static-name
+
+
+#SUBSYSTEMS=="usb", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="5740", ATTRS{manufacturer}=="STMicroelectronics", ATTR{serial}=="001337001234", MODE:="0666", SYMLINK+="kugle"
+#SUBSYSTEM=="tty", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="5799", MODE:="0666", GROUP:="dialout", SYMLINK+="kugle"
+#ACTION=="add", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="5740", SYMLINK+="kugle"
+
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="5799", MODE:="0666", GROUP:="dialout", SYMLINK+="kugle"
