@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<launch>
+
+  	<include file="$(find kugle_gazebo)/launch/gazebo.launch" />
+
+</launch>
