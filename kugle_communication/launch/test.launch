@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<launch>
+
+	<node name="test_node" pkg="kugle_communication" type="test_node" respawn="false" output="screen">
+		<param name="str_param" type="string" value="This string was loaded from the Launch file" />
+	</node>
+
+	<node name="reconfigure_gui" pkg="rqt_reconfigure" type="rqt_reconfigure" />
+
+	<node name="service_gui" pkg="rqt_service_caller" type="rqt_service_caller" />
+
+</launch>

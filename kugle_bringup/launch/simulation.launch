@@ -1,6 +1,16 @@
 <?xml version="1.0"?>
 <launch>
 
-  	<include file="$(find kugle_gazebo)/launch/gazebo.launch" />
+	<include file="$(find kugle_gazebo)/launch/gazebo.launch" />
+
+	<!-- respawn=true means that in case the node shuts down it will be restarted -->
+	<group ns="kugle">
+		<node name="quaternion_integrator" pkg="kugle_misc" type="quaternion_integrator" respawn="true" output="screen"> 
+			<param name="omega_topic" type="string" value="cmd_omega" />
+			<param name="quaternion_topic" type="string" value="cmd_quaternion" />
+			<param name="timeout" type="double" value="1.0" />
+			<param name="rate" type="double" value="200" />
+		</node>
+	</group>-
 
 </launch>
