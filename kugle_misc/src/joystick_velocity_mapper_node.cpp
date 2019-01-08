@@ -39,9 +39,9 @@ void joystickCallback(const sensor_msgs::Joy::ConstPtr& msg)
 	else
     	velocityMsg.header.frame_id = "robot"; // control velocity in heading frame
 
-	velocityMsg.twist.linear.x = maximum_linear_velocity * msg->axes[5]; // right stick Y
-    velocityMsg.twist.linear.y = maximum_linear_velocity * msg->axes[2]; // right stick X
-    velocityMsg.twist.angular.z = maximum_angular_velocity * msg->axes[0]; // left stick X
+	velocityMsg.twist.linear.x = maximum_linear_velocity * msg->axes[1]; // left stick Y
+    velocityMsg.twist.linear.y = maximum_linear_velocity * msg->axes[0]; // left stick X
+    velocityMsg.twist.angular.z = maximum_angular_velocity * msg->axes[2]; // right stick X
 	/*
 	    this->buttonSq = joy->buttons[0];
         this->buttonX = joy->buttons[1];
