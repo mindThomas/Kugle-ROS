@@ -1,3 +1,22 @@
+/* Copyright (C) 2019 Thomas Jespersen, TKJ Electronics. All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, version 3.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * General Public License for more details.
+ *
+ * Contact information
+ * ------------------------------------------
+ * Thomas Jespersen, TKJ Electronics
+ * Web      :  http://www.tkjelectronics.dk
+ * e-mail   :  thomasj@tkjelectronics.dk
+ * ------------------------------------------
+ */
+
 #include <ros/ros.h>
 #include <sensor_msgs/Joy.h>
 #include <geometry_msgs/TwistStamped.h>
@@ -6,18 +25,23 @@
 
 ros::Publisher referencePub;
 ros::Subscriber joystickSub;
-double maximum_velocity;
+double maximum_linear_velocity;
+double maximum_angular_velocity;
+bool controlModeIsInertial;
 
 void joystickCallback(const sensor_msgs::Joy::ConstPtr& msg)
 {
 	// Remap joystick message into twist (velocity) message
 	geometry_msgs::TwistStamped velocityMsg;
 
-	//velocityMsg.header.frame_id = "world"; // control inertial velocity
-    velocityMsg.header.frame_id = "robot"; // control velocity in heading frame
-	velocityMsg.twist.linear.x = maximum_velocity * msg->axes[5];
-    velocityMsg.twist.linear.y = maximum_velocity * msg->axes[2];
+	if (controlModeIsInertial)
+		velocityMsg.header.frame_id = "world"; // control inertial velocity
+	else
+    	velocityMsg.header.frame_id = "robot"; // control velocity in heading frame
 
+	velocityMsg.twist.linear.x = maximum_linear_velocity * msg->axes[5]; // right stick Y
+    velocityMsg.twist.linear.y = maximum_linear_velocity * msg->axes[2]; // right stick X
+    velocityMsg.twist.angular.z = maximum_angular_velocity * msg->axes[0]; // left stick X
 	/*
 	    this->buttonSq = joy->buttons[0];
         this->buttonX = joy->buttons[1];
@@ -58,7 +82,16 @@ int main(int argc, char **argv) {
 	joystickSub = n.subscribe(joystick_topic, 1000, &joystickCallback);
 
 	// Get maximum velocity
-    nParam.param("maximum_velocity", maximum_velocity, double(0.5));
+    nParam.param("maximum_linear_velocity", maximum_linear_velocity, double(0.5));
+    nParam.param("maximum_angular_velocity", maximum_angular_velocity, double(0.5));
+
+    // Get control mode
+	std::string control_mode;
+	nParam.param("control_mode", control_mode, std::string("body")); // defaults to body velocity references
+	if (!control_mode.compare("inertial")) // mode is inertial
+		controlModeIsInertial = true;
+	else
+		controlModeIsInertial = false;
 
 	ros::spin();
 	/*

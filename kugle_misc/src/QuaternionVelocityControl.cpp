@@ -56,7 +56,7 @@ QuaternionVelocityControl::QuaternionVelocityControl(double Rate, double Referen
     referenceSub_ = nh_.subscribe(reference_topic, 1000, &QuaternionVelocityControl::VelocityReferenceCallback, this);
 
     // Load parameters
-    nParam.param("velocity_clamp", params_.VelocityClamp, params_.VelocityClamp);
+    nParam.param("velocity_error_clamp", params_.VelocityErrorClamp, params_.VelocityErrorClamp);
     nParam.param("max_tilt", params_.MaxTilt, params_.MaxTilt);
     nParam.param("integral_gain", params_.IntegralGain, params_.IntegralGain);
     nParam.param("max_integral_correction", params_.MaxIntegralCorrection, params_.MaxIntegralCorrection);
@@ -71,6 +71,7 @@ QuaternionVelocityControl::QuaternionVelocityControl(double Rate, double Referen
     velocityRefGivenInHeadingFrame_ = true;
     desiredVelocity_.x = 0;
     desiredVelocity_.y = 0;
+    desiredAngularYawVelocity_ = 0;
     lastReferenceUpdateTime_ = ros::Time::now();
 
     shouldExit_ = false;
@@ -89,6 +90,7 @@ void QuaternionVelocityControl::Thread()
     double dt = 1.0 / rate_;
 
     geometry_msgs::Quaternion quaternionMsg;
+    double desiredYaw = 0;
     double q[4];
     double dxy[2];
     double velocityRef[2];
@@ -101,13 +103,15 @@ void QuaternionVelocityControl::Thread()
         q[2] = currentAttitude_.y;
         q[3] = currentAttitude_.z;
 
-        dxy[0] = currentVelocity_.x;
+        dxy[0] = currentVelocity_.x; // notice that this velocity is in heading frame
         dxy[1] = currentVelocity_.y;
 
         velocityRef[0] = desiredVelocity_.x;
         velocityRef[1] = desiredVelocity_.y;
 
-        Step(q, dxy, velocityRef, velocityRefGivenInHeadingFrame_, 0, dt, q_ref);
+        desiredYaw += dt * desiredAngularYawVelocity_;
+
+        Step(q, dxy, velocityRef, velocityRefGivenInHeadingFrame_, desiredYaw, dt, q_ref);
 
         quaternionMsg.w = q_ref[0];
         quaternionMsg.x = q_ref[1];
@@ -124,52 +128,52 @@ void QuaternionVelocityControl::OdometryCallback(const nav_msgs::Odometry::Const
 {
     //ROS_INFO_STREAM("Received odometry, translational velocity: (" << msg->twist.twist.linear.x << ", " << msg->twist.twist.linear.y << ")");
     currentAttitude_ = msg->pose.pose.orientation;
-    currentVelocity_ = msg->twist.twist.linear;
+    currentVelocity_ = msg->twist.twist.linear; // notice that this velocity is in heading frame
 }
 
 void QuaternionVelocityControl::VelocityReferenceCallback(const geometry_msgs::TwistStamped::ConstPtr& msg)
 {
     desiredVelocity_ = msg->twist.linear;
-    if (msg->header.frame_id.compare("robot"))
-        velocityRefGivenInHeadingFrame_ = false;
-    else
+    desiredAngularYawVelocity_ = msg->twist.angular.z;
+    if (msg->header.frame_id.find("robot") != std::string::npos) // frame id (name) contains "robot"
         velocityRefGivenInHeadingFrame_ = true;
+    else
+        velocityRefGivenInHeadingFrame_ = false;
     lastReferenceUpdateTime_ = ros::Time::now();
 }
 
 void QuaternionVelocityControl::Step(const double q[4], const double dxy[2], const double velocityRef[2], const bool velocityRefGivenInHeadingFrame, const double headingRef, const double dt, double q_ref_out[4])
 {
 	//const double Velocity_Inertial_q[4] = {0, dx_filt.sample(fmin(fmax(*dx, -CLAMP_VELOCITY), CLAMP_VELOCITY)), dy_filt.sample(fmin(fmax(*dy, -CLAMP_VELOCITY), CLAMP_VELOCITY)), 0};
-	double Velocity_Inertial_q[4] = {0, dxy[0], dxy[1], 0};
-	double Velocity_Heading_q[4];
+	double Velocity_Heading_q[4] = {0, dxy[0], dxy[1], 0};
 	double Velocity_Heading[2];
 
 	double Velocity_Reference_Filtered[2];
 	Velocity_Reference_Filtered[0] = dx_ref_filt_.Filter(velocityRef[0]);
 	Velocity_Reference_Filtered[1] = dy_ref_filt_.Filter(velocityRef[1]);
 
-	if (!velocityRefGivenInHeadingFrame) { // reference given in inertial frame
+	if (velocityRefGivenInHeadingFrame) { // reference given in inertial frame
 		// Calculate velocity error
-		Velocity_Inertial_q[1] -= Velocity_Reference_Filtered[0];
-		Velocity_Inertial_q[2] -= Velocity_Reference_Filtered[1];
+        Velocity_Heading_q[1] -= Velocity_Reference_Filtered[0];
+        Velocity_Heading_q[2] -= Velocity_Reference_Filtered[1];
 	}
+	else  // reference given in heading frame
+    {
+        double Velocity_Ref_Inertial_q[4] = {0, Velocity_Reference_Filtered[0], Velocity_Reference_Filtered[1], 0};
+        double Velocity_Ref_Heading_q[4];
+        //Velocity_Ref_Heading = [0,1,0,0;0,0,1,0] * Phi(q)' * Gamma(q) * [0;Velocity_Ref;0];
+        double tmp_q[4];
+        Quaternion_Gamma(q, Velocity_Ref_Inertial_q, tmp_q); // Gamma(q) * [0;Velocity_Ref;0];
+        Quaternion_PhiT(q, tmp_q, Velocity_Ref_Heading_q); // Phi(q)' * Gamma(q) * [0;velocityRef;0];
 
-	//Velocity_Heading = [0,1,0,0;0,0,1,0] * Phi(q)' * Gamma(q) * [0;Velocity_Inertial;0];
-	double tmp_q[4];
-	Quaternion_Gamma(q, Velocity_Inertial_q, tmp_q); // Gamma(q) * [0;Velocity_Inertial;0];
-	Quaternion_PhiT(q, tmp_q, Velocity_Heading_q); // Phi(q)' * Gamma(q) * [0;Velocity_Inertial;0];
-	Velocity_Heading[0] = Velocity_Heading_q[1];
-	Velocity_Heading[1] = Velocity_Heading_q[2];
-	// OBS. The above could also be replaced with a Quaternion transformation function that takes in a 3-dimensional vector
+        Velocity_Heading_q[1] -= Velocity_Ref_Heading_q[1];
+        Velocity_Heading_q[2] -= Velocity_Ref_Heading_q[2];
+    }
 
-	if (velocityRefGivenInHeadingFrame) { // reference given in heading frame
-		// Calculate velocity error
-		Velocity_Heading[0] -= Velocity_Reference_Filtered[0];
-		Velocity_Heading[1] -= Velocity_Reference_Filtered[1];
-	}
+    // OBS. The above could also be replaced with a Quaternion transformation function that takes in a 3-dimensional vector
 
-	Velocity_Heading[0] = std::min(fmax(Velocity_Heading[0], -params_.VelocityClamp), params_.VelocityClamp);
-	Velocity_Heading[1] = std::min(fmax(Velocity_Heading[1], -params_.VelocityClamp), params_.VelocityClamp);
+	Velocity_Heading[0] = std::min(fmax(Velocity_Heading_q[1], -params_.VelocityErrorClamp), params_.VelocityErrorClamp);
+	Velocity_Heading[1] = std::min(fmax(Velocity_Heading_q[2], -params_.VelocityErrorClamp), params_.VelocityErrorClamp);
 
 	/*Velocity_Heading_Integral[0] += INTEGRAL_GAIN/_SampleRate * fmin(fmax(Velocity_Heading[0], -CLAMP_VELOCITY), CLAMP_VELOCITY); // INTEGRAL_GAIN * dt * velocity
 	Velocity_Heading_Integral[1] += INTEGRAL_GAIN/_SampleRate * fmin(fmax(Velocity_Heading[1], -CLAMP_VELOCITY), CLAMP_VELOCITY);
@@ -198,7 +202,7 @@ void QuaternionVelocityControl::Step(const double q[4], const double dxy[2], con
 																 -Velocity_Heading[0] / normVelocity_Heading};
 
 	// CorrectionAmountRadian = min(max((normVelocity_Heading / 5), -1), 1) * deg2rad(30); % max 5 m/s resulting in 30 degree tilt <= this is the proportional gain
-	double CorrectionAmountRadian = std::min(std::max(normVelocity_Heading / params_.VelocityClamp, -1.0), 1.0) * deg2rad(params_.MaxTilt);
+	double CorrectionAmountRadian = std::min(std::max(normVelocity_Heading / params_.VelocityErrorClamp, -1.0), 1.0) * deg2rad(params_.MaxTilt);
 
 	double q_tilt[4]; // tilt reference quaternion defined in heading frame
 	q_tilt[0] = cos(CorrectionAmountRadian/2);
@@ -227,10 +231,6 @@ void QuaternionVelocityControl::Step(const double q[4], const double dxy[2], con
 
 	// Add heading to quaternion reference = q_heading o q_tilt
 	Quaternion_Phi(q_heading, q_tilt_withintegral, q_ref_out);
-
-	/*Serial.printf("%2.5f, %2.5f, ", Velocity_Heading[0], Velocity_Heading[1]);
-	Serial.printf("%2.5f, %2.5f, %2.5f, %2.5f, ", q_tilt_integral_[0], q_tilt_integral_[1], q_tilt_integral_[2], q_tilt_integral_[3]);
-	Serial.printf("%2.5f, %2.5f, %2.5f, %2.5f\n", q_ref_out[0], q_ref_out[1], q_ref_out[2], q_ref_out[3]);*/
 }
 
 } // end namespace kugle_misc

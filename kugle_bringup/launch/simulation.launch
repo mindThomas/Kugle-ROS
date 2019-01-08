@@ -17,7 +17,7 @@
 			<param name="odometry_topic" type="string" value="odom_raw" />
 			<param name="reference_topic" type="string" value="cmd_velocity" />
 			<param name="rate" type="double" value="10" />
-			<param name="velocity_clamp" type="double" value="0.5" />
+			<param name="velocity_error_clamp" type="double" value="0.15" />
 			<param name="max_tilt" type="double" value="5.0" />
 			<param name="integral_gain" type="double" value="0.0" />
 			<param name="max_integral_correction" type="double" value="8.0" />

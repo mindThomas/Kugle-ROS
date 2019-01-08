@@ -61,6 +61,7 @@ class QuaternionVelocityControl
         geometry_msgs::Quaternion currentAttitude_;
         geometry_msgs::Vector3 currentVelocity_;
         geometry_msgs::Vector3 desiredVelocity_;
+        double desiredAngularYawVelocity_;
         ros::Time lastReferenceUpdateTime_;
         bool velocityRefGivenInHeadingFrame_;
 
@@ -70,7 +71,7 @@ class QuaternionVelocityControl
 		double q_tilt_integral_[4];
 
 		struct {
-			double VelocityClamp = 0.15; // velocity clamp for the proportional gain - note that at this velocity MaxTilt will be set [meters pr. second]
+			double VelocityErrorClamp = 0.15; // velocity clamp for the proportional gain - note that at this velocity MaxTilt will be set [meters pr. second]
 			double MaxTilt= 5.0; // max tilt that velocity controller can set [degrees]
 			double IntegralGain = 0.3; // integral gain, which corresponds to the incremental compensation rate (1/gain is the number of seconds it takes the integral to reach a constant offset value)
 			double MaxIntegralCorrection = 8.0; // max tilt integral effect can compensate with [degrees]
