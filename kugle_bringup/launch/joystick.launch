@@ -3,4 +3,22 @@
 
 	<!-- Launch file for Joystick control -->
 
+	<!-- Start "sudo ds4drv" in seperate terminal -->  	
+  	<!--<node name="ds4drv_script_call" pkg="kugle_bringup" type="run_ds4drv.sh" output="screen" />-->
+
+	<!-- Remember to install "sudo apt install ros-kinetic-joy -->
+
+  	<!-- JOY ROS NODE -->
+	<node name="ps4_joy" pkg="joy" type="joy_node" respawn="true">
+	    	<param name="dev" type="string" value="/dev/input/js0" />
+    		<param name="deadzone" value="0.12" />
+ 	</node>
+
+	<node name="velocity_mapper" pkg="kugle_misc" type="joystick_velocity_mapper" respawn="true">
+	    	<param name="reference_topic" type="string" value="/kugle/cmd_velocity" />
+	    	<param name="joystick_topic" type="string" value="/joy" />
+    		<param name="maximum_velocity" value="0.5" />
+ 	</node>
+
+
 </launch>

@@ -11,6 +11,8 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
   geometry_msgs
+  sensor_msgs
+  nav_msgs
   tf
 )
 
@@ -108,7 +110,7 @@ include_directories(${Boost_INCLUDE_DIRS})
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES
-  CATKIN_DEPENDS roscpp std_msgs geometry_msgs tf
+  CATKIN_DEPENDS roscpp std_msgs geometry_msgs sensor_msgs nav_msgs tf
   DEPENDS
 )
 
@@ -153,9 +155,25 @@ include_directories(
 #   ${catkin_LIBRARIES}
 # )
 
-add_executable (quaternion_integrator src/quaternion_integrator_node.cpp)
-add_dependencies(quaternion_integrator ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(quaternion_integrator ${catkin_LIBRARIES})
+add_executable(quaternion_integrator_node src/quaternion_integrator_node.cpp)
+add_dependencies(quaternion_integrator_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(quaternion_integrator_node ${catkin_LIBRARIES})
+
+add_library(FirstOrderLPF src/FirstOrderLPF.cpp)
+add_library(Quaternion src/Quaternion.cpp)
+
+add_library(QuaternionVelocityControl src/QuaternionVelocityControl.cpp)
+add_dependencies(QuaternionVelocityControl ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(QuaternionVelocityControl Quaternion FirstOrderLPF ${catkin_LIBRARIES})
+
+add_executable(velocity_controller_node src/velocity_controller_node.cpp)
+add_dependencies(velocity_controller_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(velocity_controller_node QuaternionVelocityControl ${catkin_LIBRARIES})
+
+add_executable(joystick_velocity_mapper src/joystick_velocity_mapper.cpp)
+add_dependencies(joystick_velocity_mapper ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(joystick_velocity_mapper ${catkin_LIBRARIES})
+
 
 #############
 ## Install ##
