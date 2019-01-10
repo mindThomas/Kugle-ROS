@@ -55,6 +55,11 @@ QuaternionVelocityControl::QuaternionVelocityControl(double Rate, double Referen
     nParam.param("reference_topic", reference_topic, std::string("cmd_velocity"));
     referenceSub_ = nh_.subscribe(reference_topic, 1000, &QuaternionVelocityControl::VelocityReferenceCallback, this);
 
+    // Subscribe to velocity reference
+    std::string inertial_reference_topic;
+    nParam.param("inertial_reference_topic", inertial_reference_topic, std::string("cmd_velocity_inertial"));
+    referenceInertialSub_ = nh_.subscribe(inertial_reference_topic, 1000, &QuaternionVelocityControl::VelocityReferenceInertialCallback, this);
+
     // Load parameters
     nParam.param("velocity_error_clamp", params_.VelocityErrorClamp, params_.VelocityErrorClamp);
     nParam.param("max_tilt", params_.MaxTilt, params_.MaxTilt);
@@ -131,14 +136,19 @@ void QuaternionVelocityControl::OdometryCallback(const nav_msgs::Odometry::Const
     currentVelocity_ = msg->twist.twist.linear; // notice that this velocity is in heading frame
 }
 
-void QuaternionVelocityControl::VelocityReferenceCallback(const geometry_msgs::TwistStamped::ConstPtr& msg)
+void QuaternionVelocityControl::VelocityReferenceCallback(const geometry_msgs::Twist::ConstPtr& msg)
 {
-    desiredVelocity_ = msg->twist.linear;
-    desiredAngularYawVelocity_ = msg->twist.angular.z;
-    if (msg->header.frame_id.find("robot") != std::string::npos) // frame id (name) contains "robot"
-        velocityRefGivenInHeadingFrame_ = true;
-    else
-        velocityRefGivenInHeadingFrame_ = false;
+    desiredVelocity_ = msg->linear;
+    desiredAngularYawVelocity_ = msg->angular.z;
+    velocityRefGivenInHeadingFrame_ = true;
+    lastReferenceUpdateTime_ = ros::Time::now();
+}
+
+void QuaternionVelocityControl::VelocityReferenceInertialCallback(const geometry_msgs::Twist::ConstPtr& msg)
+{
+    desiredVelocity_ = msg->linear;
+    desiredAngularYawVelocity_ = msg->angular.z;
+    velocityRefGivenInHeadingFrame_ = false;
     lastReferenceUpdateTime_ = ros::Time::now();
 }
 

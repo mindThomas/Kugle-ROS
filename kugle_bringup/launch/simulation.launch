@@ -16,6 +16,7 @@
 			<param name="quaternion_topic" type="string" value="cmd_quaternion" />
 			<param name="odometry_topic" type="string" value="odom_raw" />
 			<param name="reference_topic" type="string" value="cmd_velocity" />
+			<param name="inertial_reference_topic" type="string" value="cmd_velocity_inertial" />
 			<param name="rate" type="double" value="10" />
 			<param name="velocity_error_clamp" type="double" value="0.15" />
 			<param name="max_tilt" type="double" value="5.0" />

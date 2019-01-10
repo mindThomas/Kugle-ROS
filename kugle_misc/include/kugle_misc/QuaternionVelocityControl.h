@@ -30,7 +30,7 @@
 
 #include <tf/transform_listener.h>
 #include <geometry_msgs/Quaternion.h>
-#include <geometry_msgs/TwistStamped.h>
+#include <geometry_msgs/Twist.h>
 #include <nav_msgs/Odometry.h>
 
 namespace kugle_misc {
@@ -44,7 +44,8 @@ class QuaternionVelocityControl
 	private:
         void Thread();
         void OdometryCallback(const nav_msgs::Odometry::ConstPtr& msg);
-        void VelocityReferenceCallback(const geometry_msgs::TwistStamped::ConstPtr& msg);
+        void VelocityReferenceCallback(const geometry_msgs::Twist::ConstPtr& msg);
+        void VelocityReferenceInertialCallback(const geometry_msgs::Twist::ConstPtr& msg);
 		void Step(const double q[4], const double dxy[2], const double velocityRef[2], const bool velocityRefGivenInHeadingFrame, const double headingRef, const double dt, double q_ref_out[4]);
 
 	private:
@@ -56,6 +57,7 @@ class QuaternionVelocityControl
         ros::Publisher quaternionPub_;
         ros::Subscriber odometrySub_;
         ros::Subscriber referenceSub_;
+        ros::Subscriber referenceInertialSub_;
         tf::TransformListener tfListener_;
 
         geometry_msgs::Quaternion currentAttitude_;
