@@ -9,9 +9,9 @@ set(library_dependencies  ${Boost_LIBRARIES} )
 #FILE(GLOB_RECURSE binary_headers *.hpp) # find all hpp files
 
 set(binary_sources "${CMAKE_CURRENT_SOURCE_DIR}/Socket.cpp")
-set(binary_headers "${CMAKE_CURRENT_SOURCE_DIR}/LSPC/lspc/Packet.hpp"
-	           "${CMAKE_CURRENT_SOURCE_DIR}/LSPC/lspc/Serializable.hpp"
-	           "${CMAKE_CURRENT_SOURCE_DIR}/LSPC/lspc/SocketBase.hpp")
+set(binary_headers "${CMAKE_CURRENT_SOURCE_DIR}/lspc/Packet.hpp"
+	           "${CMAKE_CURRENT_SOURCE_DIR}/lspc/Serializable.hpp"
+	           "${CMAKE_CURRENT_SOURCE_DIR}/lspc/SocketBase.hpp")
 
 
 set(GLOBAL_HEADERS ${GLOBAL_HEADERS} ${binary_headers} PARENT_SCOPE)
