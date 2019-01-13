@@ -1,15 +1,20 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(kugle_msgs)
+project(kugle_srvs)
 
 find_package(catkin REQUIRED COMPONENTS geometry_msgs message_generation std_msgs actionlib_msgs)
 
 # Inspired from https://github.com/ros/common_msgs/tree/jade-devel/nav_msgs
 
-add_message_files(
-  DIRECTORY msg
+add_service_files(
+  DIRECTORY srv
   FILES
-  Test.msg
+  AddTwoInts.srv
 )
+
+#add_action_files(
+#  FILES
+#  #actionFileHere.action
+#)
 
 generate_messages(DEPENDENCIES geometry_msgs std_msgs actionlib_msgs)
 

@@ -1,0 +1,46 @@
+<?xml version="1.0"?>
+<robot name="jetsoncar" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+	<!-- Transmissions are motors attached to a certain joint. We thus need to instantiate transmissions at the corresponding joints -->
+
+	<!-- A transmission consists of an actuator (commanded output) and a sensor (for feedback) 
+	     These interfaces are used as abstraction layers between controllers and the actual hardware.
+	-->
+
+	<!-- Possible hardware interfaces:
+		EffortJointInterface		-  	similar to torque/acceleration control
+		VelocityJointInterface		-	references given as velocity (linear/angular)
+		PositionJointInterface		-	references given as position (linear/angular)
+	-->
+
+	<xacro:macro name="wheel_transmission" params="wheel">
+	  <transmission name="${wheel}_transmission" type="SimpleTransmission">
+	    <type>transmission_interface/SimpleTransmission</type>
+	    <joint name="${wheel}_joint">
+	      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+	    </joint>
+	    <actuator name="${wheel}_motor">
+	      <!-- The motor is torque controlled -->
+	      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+	      <mechanicalReduction>1</mechanicalReduction>
+	    </actuator>
+	  </transmission>
+	</xacro:macro>
+
+	<xacro:macro name="hinge_transmission" params="hinge">
+	  <transmission name="${hinge}_transmission" type="SimpleTransmission">
+	    <type>transmission_interface/SimpleTransmission</type>
+	    <joint name="${hinge}_joint">
+	      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+	    </joint>
+	    <actuator name="${hinge}_motor">
+	      <!-- The motor is torque controlled -->
+	      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+	      <mechanicalReduction>1</mechanicalReduction>
+	    </actuator>
+	  </transmission>
+	</xacro:macro>
+
+	<!-- Notice that the two transmission types above are identical - only the naming convention is different -->
+
+</robot>

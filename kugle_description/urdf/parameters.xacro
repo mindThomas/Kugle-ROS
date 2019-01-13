@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<robot name="kugle" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+	<!-- X axis direction is forward, Y axis direction is left -->
+
+	<!-- Physical properties -->
+	<xacro:property name="ball_radius" value="0.129" />
+	<xacro:property name="ball_mass" value="0.500" />
+	<xacro:property name="cylinder_radius" value="0.100" />
+	<xacro:property name="cylinder_height" value="1.000" />
+	<xacro:property name="cylinder_mass" value="0.500" />
+
+	<!-- Sensor parameters -->
+	<xacro:property name="visualize_lidar" value="false" />	
+
+</robot>

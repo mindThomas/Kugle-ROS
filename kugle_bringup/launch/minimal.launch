@@ -1,6 +1,8 @@
 <?xml version="1.0"?>
 <launch>
 
+	<!-- Minimal launch file for physical robot bringup -->
+
 	<!-- Requires sick_tim to be installed: "sudo apt install ros-kinetic-sick-tim" -->
 
 	<!-- The robot description below needs to be modified to have the Kugle URDF -->

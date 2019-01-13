@@ -14,21 +14,21 @@
 // For CLion to update/capture the updated parameter and message types, open the "build" folder and run "make"
 
 /* Include generated Dynamic Reconfigure parameters */
-#include <kugle_communication/ParametersConfig.h>
+#include <kugle_driver/ParametersConfig.h>
 
 /* Include generated Services */
-#include <kugle_communication/AddTwoInts.h>
+#include <kugle_srvs/AddTwoInts.h>
 
 /* Include generated Message Types */
-#include <kugle_communication/Test.h>
+#include <kugle_msgs/Test.h>
 
 void TestServiceClient(ros::NodeHandle &n);
 
-dynamic_reconfigure::Server<kugle_communication::ParametersConfig> * serverPtr;
+dynamic_reconfigure::Server<kugle_driver::ParametersConfig> * serverPtr;
 /* Initialize the parameters at once, otherwise the values will be random */
-kugle_communication::ParametersConfig config;
+kugle_driver::ParametersConfig config;
 
-void paramChangeCallback(kugle_communication::ParametersConfig &config, uint32_t level) {
+void paramChangeCallback(kugle_driver::ParametersConfig &config, uint32_t level) {
 	ROS_INFO("Reconfigure Request: %d %f %s %s %d",
             config.int_param, config.double_param, 
             config.str_param.c_str(), 
@@ -36,8 +36,8 @@ void paramChangeCallback(kugle_communication::ParametersConfig &config, uint32_t
             config.size);
 }
 
-bool add(kugle_communication::AddTwoInts::Request  &req,
-		 kugle_communication::AddTwoInts::Response &res)
+bool add(kugle_srvs::AddTwoInts::Request  &req,
+		 kugle_srvs::AddTwoInts::Response &res)
 {
 	res.sum = req.a + req.b;
     ROS_INFO("request: x=%ld, y=%ld", (long int)req.a, (long int)req.b);
@@ -53,14 +53,14 @@ bool add(kugle_communication::AddTwoInts::Request  &req,
 }
 
 int main(int argc, char **argv) {
-	std::string nodeName = "communication";
+	std::string nodeName = "driver";
 	ros::init(argc, argv, nodeName.c_str());
 	ros::NodeHandle n("~"); // default/current namespace node handle
 
 	// Enable reconfigurable parameters - note that any parameters set on the node by roslaunch <param> tags will be seen by a dynamically reconfigurable node just as it would have been by a conventional node.
     boost::recursive_mutex configMutex;
-	dynamic_reconfigure::Server<kugle_communication::ParametersConfig> server(configMutex);
-	dynamic_reconfigure::Server<kugle_communication::ParametersConfig>::CallbackType f;
+	dynamic_reconfigure::Server<kugle_driver::ParametersConfig> server(configMutex);
+	dynamic_reconfigure::Server<kugle_driver::ParametersConfig>::CallbackType f;
 	f = boost::bind(&paramChangeCallback, _1, _2);
 	server.setCallback(f);
     serverPtr = &server;
@@ -72,8 +72,8 @@ int main(int argc, char **argv) {
 	ros::ServiceServer service = n.advertiseService("add_two_ints", add);
 
 	// Create custom message publisher
-    ros::Publisher pub = n.advertise<kugle_communication::Test>("test", 1000);
-	kugle_communication::Test testMsg;
+    ros::Publisher pub = n.advertise<kugle_msgs::Test>("test", 1000);
+	kugle_msgs::Test testMsg;
 	testMsg.first_name = "Thomas";
     testMsg.last_name = "Jespersen";
 	testMsg.age = 10;
@@ -91,8 +91,8 @@ int main(int argc, char **argv) {
 // Note that the service call (client) can not be performed from within the same node from where the service is provided
 void TestServiceClient(ros::NodeHandle &n)
 {
-	ros::ServiceClient client = n.serviceClient<kugle_communication::AddTwoInts>("add_two_ints");
-	kugle_communication::AddTwoInts srv;
+	ros::ServiceClient client = n.serviceClient<kugle_srvs::AddTwoInts>("add_two_ints");
+	kugle_srvs::AddTwoInts srv;
 	srv.request.a = 10;
 	srv.request.b = 20;
 	if (client.call(srv))

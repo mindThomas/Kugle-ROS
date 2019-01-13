@@ -1,0 +1,46 @@
+<?xml version="1.0"?>
+<robot name="kugle" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+	<!-- X axis direction is forward, Y axis direction is left -->
+	<xacro:include filename="$(find kugle_description)/urdf/parameters.xacro" />
+
+	<!-- Ball -->
+	<xacro:macro name="ball_geometry"> <!-- Simulation visual appearance -->
+		<origin xyz="0 0 0" rpy="0 0 0" /> <!-- origin (0,0,0) is in the center of the sphere -->
+		<geometry>
+			<sphere radius="${ball_radius}"/>
+		</geometry>
+	</xacro:macro>
+	<xacro:macro name="ball_collision"> <!-- Physical properties - modelled as a cube to make it "balance" -->
+		<origin xyz="0 0 0" rpy="0 0 0" /> <!-- origin (0,0,0) is in the center of the sphere -->
+		<geometry>
+			<box size="${2*ball_radius} ${2*ball_radius} ${2*ball_radius}" />
+		</geometry>
+	</xacro:macro>
+	<xacro:macro name="ball_inertial"> <!-- Physical properties - modelled as a cube to make it "balance" -->
+		<origin xyz="0 0 0" rpy="0 0 0" /> <!-- origin (0,0,0) is in the center of the box -->
+		<xacro:box_inertial mass="${ball_mass}" length="${2*ball_radius}" width="${2*ball_radius}" height="${2*ball_radius}" /> 
+	</xacro:macro>
+
+	<!-- Robot cylinder -->
+	<xacro:macro name="robot_geometry">
+		<origin xyz="0 0 ${cylinder_height/2}" rpy="0 0 0" /> 
+		<geometry>
+			<cylinder length="${cylinder_height}" radius="${cylinder_radius}"/>
+		</geometry>
+	</xacro:macro>
+	<xacro:macro name="robot_inertial"> 
+		<origin xyz="0 0 ${cylinder_height/2}" rpy="0 0 0" />
+		<xacro:cylinder_inertial mass="${cylinder_mass}" radius="${cylinder_radius}" length="${cylinder_height}" /> 
+	</xacro:macro>
+
+	<!-- LiDAR geometry -->
+	<xacro:macro name="lidar_geometry">
+		<origin xyz="0 0 -0.019585" rpy="0 0 0" />
+		<geometry>
+			<!-- SICK TIM571 LiDAR bounding box -->
+			<box size="0.060 0.061 0.08575" />
+		</geometry>
+	</xacro:macro>
+
+</robot>

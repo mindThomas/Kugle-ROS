@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>kugle_communication</name>
+  <name>kugle_driver</name>
   <version>0.0.0</version>
-  <description>The kugle_communication package</description>
+  <description>The kugle_driver package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <!-- Example:  -->
@@ -54,8 +54,8 @@
   <depend>geometry_msgs</depend>
   <depend>tf</depend>
   <depend>dynamic_reconfigure</depend>
-  <depend>message_generation</depend>
-  <depend>message_runtime</depend>
+  <depend>kugle_msgs</depend>
+  <depend>kugle_srvs</depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>
