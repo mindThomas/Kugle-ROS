@@ -11,7 +11,10 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
   geometry_msgs
+  nav_msgs
   tf
+  tf2
+  tf2_ros
   dynamic_reconfigure
   kugle_msgs
   kugle_srvs
@@ -51,6 +54,9 @@ generate_dynamic_reconfigure_options(
   cfg/Parameters.cfg
 )
 
+# Add LSPC library
+add_subdirectory(libs/lspc)
+
 ###################################
 ## catkin specific configuration ##
 ###################################
@@ -62,8 +68,8 @@ generate_dynamic_reconfigure_options(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include
-  LIBRARIES
-  CATKIN_DEPENDS roscpp std_msgs geometry_msgs tf dynamic_reconfigure kugle_msgs kugle_srvs
+  LIBRARIES lspc
+  CATKIN_DEPENDS roscpp std_msgs geometry_msgs nav_msgs tf dynamic_reconfigure kugle_msgs kugle_srvs
   DEPENDS
 )
 
@@ -111,6 +117,11 @@ include_directories(
 add_executable (test_node src/test_node.cpp)
 add_dependencies(test_node ${PROJECT_NAME}_gencfg ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(test_node ${catkin_LIBRARIES})
+
+add_executable (kugle_driver_node src/kugle_driver_node.cpp)
+add_dependencies(kugle_driver_node ${PROJECT_NAME}_gencfg ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(kugle_driver_node lspc ${catkin_LIBRARIES})
+
 
 #############
 ## Install ##

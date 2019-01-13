@@ -1,7 +1,9 @@
 <?xml version="1.0"?>
 <launch>
 
-	<node name="test_node" pkg="kugle_communication" type="test_node" respawn="false" output="screen">
+  	<env name="ROSCONSOLE_CONFIG_FILE" value="$(find kugle_driver)/config/rosconsole.conf"/>
+
+	<node name="test_node" pkg="kugle_driver" type="test_node" respawn="false" output="screen">
 		<param name="str_param" type="string" value="This string was loaded from the Launch file" />
 	</node>
 

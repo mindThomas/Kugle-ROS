@@ -3,12 +3,12 @@
 
 	<!-- Minimal launch file for physical robot bringup -->
 
-	<!-- Requires sick_tim to be installed: "sudo apt install ros-kinetic-sick-tim" -->
+	<include file="$(find kugle_driver)/launch/kugle_driver.launch">
+		<arg name="serial_port" value="/dev/kugle" />
+	</include>
 
-	<!-- The robot description below needs to be modified to have the Kugle URDF -->
-	<param name="robot_description" command="$(find xacro)/xacro --inorder '$(find sick_tim)/urdf/example.urdf.xacro'" />
-	<node name="robot_state_publisher" pkg="robot_state_publisher" type="state_publisher" />
-	
+	<!-- Launch SICK LiDAR nodes -->
+	<!-- Requires sick_tim to be installed: "sudo apt install ros-kinetic-sick-tim" -->
 	<node name="sick_tim571_2050101_1" pkg="sick_tim" type="sick_tim551_2050001" respawn="false" output="screen">
 		<!-- default values: -->
 		<!--

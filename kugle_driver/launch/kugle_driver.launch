@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<launch>
+
+	<arg name="serial_port" default="/dev/kugle" />
+
+  	<env name="ROSCONSOLE_CONFIG_FILE" value="$(find kugle_driver)/config/rosconsole.conf"/>
+
+	<!-- urdf xml robot description loaded on the Parameter Server (for use in RViz) - this also converts the xacro into a proper urdf file -->
+	<param name="robot_description" command="$(find xacro)/xacro '$(find kugle_description)/urdf/kugle.xacro'" />
+	<node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" respawn="true" output="screen" />
+
+	<node name="kugle_driver" pkg="kugle_driver" type="kugle_driver_node" respawn="true" output="screen">
+		<param name="serial_port" type="string" value="$(arg serial_port)" />
+	</node>
+
+</launch>

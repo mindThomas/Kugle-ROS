@@ -12,182 +12,63 @@
 	<!-- Inspired from https://github.com/mindThomas/JetsonCar-Simulation/blob/master/jetsoncar_description/urdf/jetsoncar.xacro -->
 
 	<xacro:include filename="$(find kugle_description)/urdf/parameters.xacro" />
-	<xacro:include filename="$(find kugle_description)/urdf/functions.xacro" />
 	<xacro:include filename="$(find kugle_description)/urdf/physical.xacro" />
 	<xacro:include filename="$(find kugle_description)/urdf/joints.xacro" />
-	<xacro:include filename="$(find kugle_description)/urdf/transmissions.xacro" />
 	<xacro:include filename="$(find kugle_description)/urdf/materials.xacro" />
 
 	<!-- Base link is at the contact point (hence ground level) -->
-	<link name="base_link"/>
-
-
-	<!--<link name="contact_point">
-		<origin xyz="0 0 -${ball_radius}" rpy="0 0 0" />
-	</link>
-
-	<xacro:fixed_offset_joint parent="contact_point" child="base_link" offset="0 0 ${ball_radius}"/>--> <!-- contact_point needs to be parent since actuation will affect this point -->
+	<link name="contact_point"/>
 
 	<link name="ball">
-		<!--<inertial>
-			<xacro:ball_inertial/>
-		</inertial>-->
-		<inertial>
-			<!-- Add a fictious mass and inertia to emulate a unit point mass - this allows the Torque inputs to work as Acceleration inputs -->
-			<origin xyz="0 0 0" rpy="0 0 0" /> <!-- origin (0,0,0) is in the center of the box -->
-			<mass value="1.0" />
-			<inertia ixx="1.0"
-					 ixy="0"
-					 ixz="0"
-					 iyy="1.0"
-					 iyz="0"
-					 izz="1.0"
-			/>
-		</inertial>
-		<collision>
-			<xacro:ball_collision/>
-		</collision>
 		<visual>
 			<material name="black"/>
 			<xacro:ball_geometry/>
 		</visual>
 	</link>
 
-	<xacro:fixed_offset_joint parent="base_link" child="ball" offset="0 0 ${ball_radius}"/>
+	<xacro:fixed_offset_joint parent="contact_point" child="ball" offset="0 0 ${ball_radius}"/>
 
-	<link name="heading">
-		<inertial>
-			<origin xyz="0 0 0" rpy="0 0 0" />
-			<mass value="0.001" />
-			<inertia ixx="0.0"
-					 ixy="0"
-					 ixz="0"
-					 iyy="0.0"
-					 iyz="0"
-					 izz="0.0"
-			/>
-		</inertial>
-	</link>
-
+	<link name="heading" />
 	<joint name="yaw" type="continuous">
 		<parent link="ball"/>
 		<child link="heading"/>
-		<origin xyz="0 0 0" rpy="0 0 0" /> <!-- offset from parent to child, so with direction based in parent frame -->
+		<origin xyz="0 0 0" rpy="0 0 0" />
 		<axis xyz="0 0 1"/>
-		<!--<limit lower="-${pi}" upper="${pi}" effort="10" velocity="100"/>-->
 	</joint>
 
-
-	<link name="tilt">
-		<inertial>
-			<origin xyz="0 0 0" rpy="0 0 0" />
-			<mass value="0.001" />
-			<inertia ixx="0.0"
-					 ixy="0"
-					 ixz="0"
-					 iyy="0.0"
-					 iyz="0"
-					 izz="0.0"
-			/>
-		</inertial>
-	</link>
-
-	<joint name="pitch" type="revolute">
-		<parent link="heading"/>
-		<child link="tilt"/>
-		<origin xyz="0 0 0" rpy="0 0 0" /> <!-- offset from parent to child, so with direction based in parent frame -->
-		<axis xyz="0 1 0"/>
-		<limit lower="-${pi/2}" upper="${pi/2}" effort="10" velocity="100"/>
-	</joint>
-
-	<link name="robot">
-		<!--<inertial>
-			<xacro:robot_inertial/>
-		</inertial>-->
-		<inertial>
-			<!-- Add a fictious mass and inertia to emulate a unit point mass - this allows the Torque inputs to work as Acceleration inputs -->
-			<origin xyz="0 0 ${cylinder_height/2}" rpy="0 0 0" />
-			<mass value="0.001" />
-			<inertia ixx="0000000.0"
-					 ixy="0"
-					 ixz="0"
-					 iyy="0000000.0"
-					 iyz="0"
-					 izz="0000000.0"
-			/>
-		</inertial>
-		<!--<collision>
-			<xacro:robot_geometry/>
-		</collision>-->
+	<link name="base_link">
 		<visual>
-			<material name="grey"/>
-			<xacro:robot_geometry/>
-			<!--<origin xyz="0 0 -${ball_radius}" rpy="0 0 ${pi/2}" />
+			<!--<material name="grey"/>
+			<xacro:robot_geometry/>-->
+			<origin xyz="0 0 -${ball_radius}" rpy="0 0 ${pi/2}" />
 			<geometry>
-				<mesh filename="package://kugle_gazebo/models/kugle.dae" scale="1.0 1.0 1.0"/>
-			</geometry>-->
+				<mesh filename="package://kugle_description/models/kugle.dae" scale="1.0 1.0 1.0"/>
+			</geometry>
 		</visual>
 	</link>
-
-	<!--<xacro:fixed_offset_joint_rpy parent="base_link" child="robot" offset="0 0 ${ball_radius}" rpy="0.2 0 0" />-->
-	<joint name="roll" type="revolute">
-		<parent link="tilt"/>
-		<child link="robot"/>
-		<origin xyz="0 0 0" rpy="0 0 0" /> <!-- offset from parent to child, so with direction based in parent frame -->
-		<axis xyz="1 0 0"/>
-		<limit lower="-${pi/2}" upper="${pi/2}" effort="10" velocity="100"/>
+	<joint name="tilt" type="continuous">
+		<parent link="heading"/>
+		<child link="base_link"/>
+		<origin xyz="0 0 0" rpy="0 0 0" />
+		<axis xyz="1 1 0"/>
 	</joint>
 
-	<link name="sick_left_link">
-		<inertial>
-			<origin xyz="0 0 0" rpy="0 0 0" />
-			<mass value="0.001" />
-			<inertia ixx="0.0"
-					 ixy="0"
-					 ixz="0"
-					 iyy="0.0"
-					 iyz="0"
-					 izz="0.0"
-			/>
-		</inertial>
-		<visual>
-			<material name="grey"/>
-			<xacro:lidar_geometry/>
-		</visual>
-	</link>
+	<!-- Include sensors links -->
+	<link name="sick_left_link" />
+	<xacro:fixed_offset_joint_rpy parent="base_link" child="sick_left_link" offset="0 0.123 0.33757" rpy="0 0 0" />
 
-	<xacro:fixed_offset_joint_rpy parent="robot" child="sick_left_link" offset="0 0.123 0.33757" rpy="0 0 0" />
-
-	<link name="sick_right_link">
-		<inertial>
-			<origin xyz="0 0 0" rpy="0 0 0" />
-			<mass value="0.001" />
-			<inertia ixx="0.0"
-					 ixy="0"
-					 ixz="0"
-					 iyy="0.0"
-					 iyz="0"
-					 izz="0.0"
-			/>
-		</inertial>
-		<visual>
-			<material name="grey"/>
-			<xacro:lidar_geometry/>
-		</visual>
-	</link>
-
-	<xacro:fixed_offset_joint_rpy parent="robot" child="sick_right_link" offset="0 -0.123 0.33757" rpy="0 0 ${pi}" />
-
-	<!-- Link Gazebo and ROS - this has to happen as the last thing -->
-	<xacro:include filename="$(find kugle_description)/urdf/gazebo.xacro" />
+	<link name="sick_right_link" />
+	<xacro:fixed_offset_joint_rpy parent="base_link" child="sick_right_link" offset="0 -0.123 0.33757" rpy="0 0 ${pi}" />
 
 	<!-- Add realsense camera link -->
-	<!-- Note that this Realsense camera is not the correct one, hence the physical location (frames) of the different image streams will be different in real life -->
-	<!-- Import macro for realsense-RS200 camera-->
-	<xacro:include filename="$(find realsense_gazebo_plugin)/urdf/realsense-RS200.macro.xacro"/>
-	<!-- Create camera instance -->
-	<xacro:realsense-rs200 prefix="" parent="robot">
-		<origin xyz="0.05 0 1.11" rpy="0 0.25 0" />
-	</xacro:realsense-rs200>
+	<link name="realsense_camera_link">
+		<visual>
+	            <origin rpy="0 0 0" xyz="0 0 0"/>
+	            <geometry>
+	                <mesh filename="package://kugle_description/models/realsense_camera/meshes/realsense.dae"/>
+	            </geometry>
+		</visual>
+	</link>
+	<xacro:fixed_offset_joint_rpy parent="base_link" child="realsense_camera_link" offset="0.05 0 1.11" rpy="00 0.25 0" />
 
 </robot>

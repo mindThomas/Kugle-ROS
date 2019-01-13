@@ -28,7 +28,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: LaserScan
+    SyncSource: ""
 Visualization Manager:
   Class: ""
   Displays:
@@ -69,11 +69,8 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-        color:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        depth:
+          Value: true
+        contact_point:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -81,20 +78,7 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-        ired1:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        ired2:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        robot:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        rs200_camera:
+        realsense_camera_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -107,12 +91,8 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-        tilt:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
       Name: RobotModel
-      Robot Description: robot_description_rviz
+      Robot Description: robot_description
       TF Prefix: ""
       Update Interval: 0
       Value: true
@@ -126,56 +106,35 @@ Visualization Manager:
           Value: true
         base_link:
           Value: true
-        color:
-          Value: true
-        depth:
+        contact_point:
           Value: true
         heading:
           Value: true
-        ired1:
-          Value: true
-        ired2:
-          Value: true
         odom:
           Value: true
-        robot:
-          Value: true
-        rs200_camera:
+        realsense_camera_link:
           Value: true
         sick_left_link:
           Value: true
         sick_right_link:
           Value: true
-        tilt:
-          Value: true
-        world:
-          Value: false
       Marker Scale: 1
       Name: TF
       Show Arrows: true
       Show Axes: true
       Show Names: true
       Tree:
-        world:
-          odom:
-            base_link:
-              ball:
-                heading:
-                  tilt:
-                    robot:
-                      rs200_camera:
-                        color:
-                          {}
-                        depth:
-                          {}
-                        ired1:
-                          {}
-                        ired2:
-                          {}
-                      sick_left_link:
-                        {}
-                      sick_right_link:
-                        {}
+        odom:
+          contact_point:
+            ball:
+              heading:
+                base_link:
+                  realsense_camera_link:
+                    {}
+                  sick_left_link:
+                    {}
+                  sick_right_link:
+                    {}
       Update Interval: 0
       Value: true
     - Class: rviz/Axes
@@ -210,7 +169,7 @@ Visualization Manager:
       Size (Pixels): 3
       Size (m): 0.00999999978
       Style: Flat Squares
-      Topic: /kugle/laser/left/scan
+      Topic: /laser/left/scan
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
@@ -240,7 +199,7 @@ Visualization Manager:
       Size (Pixels): 3
       Size (m): 0.00999999978
       Style: Flat Squares
-      Topic: /kugle/laser/right/scan
+      Topic: /laser/right/scan
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
@@ -279,7 +238,7 @@ Visualization Manager:
   Global Options:
     Background Color: 139; 139; 139
     Default Light: true
-    Fixed Frame: world
+    Fixed Frame: odom
     Frame Rate: 30
   Name: root
   Tools:
@@ -307,18 +266,18 @@ Visualization Manager:
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.131383359
-        Y: -0.215693682
-        Z: 1.15313447
+        X: 0.161537737
+        Y: -0.0906873569
+        Z: 1.22431803
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.0500000007
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 0.484795958
+      Pitch: 0.364796042
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.10040426
+      Yaw: 3.11540246
     Saved: ~
 Window Geometry:
   Displays:

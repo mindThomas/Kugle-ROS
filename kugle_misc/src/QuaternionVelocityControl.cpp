@@ -41,24 +41,16 @@ QuaternionVelocityControl::QuaternionVelocityControl(double Rate, double Referen
 	q_tilt_integral_[3] = 0;
 
 	// Publish to quaternion reference topic
-	std::string quaternion_topic;
-    nParam.param("quaternion_topic", quaternion_topic, std::string("cmd_quaternion"));
-    quaternionPub_ = nh_.advertise<geometry_msgs::Quaternion>(quaternion_topic, 1000);
+    quaternionPub_ = nh_.advertise<geometry_msgs::Quaternion>("cmd_quaternion", 1000);
 
 	// Subscribe to odometry topic
-	std::string odometry_topic;
-    nParam.param("odometry_topic", odometry_topic, std::string("odom_raw"));
-    odometrySub_ = nh_.subscribe(odometry_topic, 1000, &QuaternionVelocityControl::OdometryCallback, this);
+    odometrySub_ = nh_.subscribe("odom", 1000, &QuaternionVelocityControl::OdometryCallback, this);
 
     // Subscribe to velocity reference
-    std::string reference_topic;
-    nParam.param("reference_topic", reference_topic, std::string("cmd_velocity"));
-    referenceSub_ = nh_.subscribe(reference_topic, 1000, &QuaternionVelocityControl::VelocityReferenceCallback, this);
+    referenceSub_ = nh_.subscribe("cmd_vel", 1000, &QuaternionVelocityControl::VelocityReferenceCallback, this);
 
     // Subscribe to velocity reference
-    std::string inertial_reference_topic;
-    nParam.param("inertial_reference_topic", inertial_reference_topic, std::string("cmd_velocity_inertial"));
-    referenceInertialSub_ = nh_.subscribe(inertial_reference_topic, 1000, &QuaternionVelocityControl::VelocityReferenceInertialCallback, this);
+    referenceInertialSub_ = nh_.subscribe("cmd_vel_inertial", 1000, &QuaternionVelocityControl::VelocityReferenceInertialCallback, this);
 
     // Load parameters
     nParam.param("velocity_error_clamp", params_.VelocityErrorClamp, params_.VelocityErrorClamp);

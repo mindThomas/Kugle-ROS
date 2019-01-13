@@ -72,14 +72,10 @@ int main(int argc, char **argv) {
 	ros::NodeHandle nParam("~"); // private node handle
 
 	// Publish to reference topic
-	std::string reference_topic;
-	nParam.param("reference_topic", reference_topic, std::string("cmd_velocity"));
-	referencePub = n.advertise<geometry_msgs::TwistStamped>(reference_topic, 1000);
+	referencePub = n.advertise<geometry_msgs::TwistStamped>("cmd_vel", 1000);
 
 	// Subscribe to joystick topic
-	std::string joystick_topic;
-	nParam.param("joystick_topic", joystick_topic, std::string("joy"));
-	joystickSub = n.subscribe(joystick_topic, 1000, &joystickCallback);
+	joystickSub = n.subscribe("joy", 1000, &joystickCallback);
 
 	// Get maximum velocity
     nParam.param("maximum_linear_velocity", maximum_linear_velocity, double(0.5));

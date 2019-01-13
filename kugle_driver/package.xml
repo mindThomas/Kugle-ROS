@@ -52,7 +52,10 @@
   <depend>roscpp</depend>
   <depend>std_msgs</depend>
   <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
   <depend>tf</depend>
+  <depend>tf2</depend>
+  <depend>tf2_ros</depend>
   <depend>dynamic_reconfigure</depend>
   <depend>kugle_msgs</depend>
   <depend>kugle_srvs</depend>
