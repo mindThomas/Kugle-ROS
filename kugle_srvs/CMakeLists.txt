@@ -9,6 +9,10 @@ add_service_files(
   DIRECTORY srv
   FILES
   AddTwoInts.srv
+  GetParameter.srv
+  SetParameter.srv
+  DumpParameters.srv
+  StoreParameters.srv
 )
 
 #add_action_files(

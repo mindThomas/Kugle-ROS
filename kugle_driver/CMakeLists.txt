@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
   geometry_msgs
+  sensor_msgs
   nav_msgs
   tf
   tf2
@@ -69,7 +70,7 @@ add_subdirectory(libs/lspc)
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES lspc
-  CATKIN_DEPENDS roscpp std_msgs geometry_msgs nav_msgs tf dynamic_reconfigure kugle_msgs kugle_srvs
+  CATKIN_DEPENDS roscpp std_msgs geometry_msgs sensor_msgs nav_msgs tf dynamic_reconfigure kugle_msgs kugle_srvs
   DEPENDS
 )
 
