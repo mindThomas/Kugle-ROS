@@ -13,6 +13,9 @@ add_service_files(
   SetParameter.srv
   DumpParameters.srv
   StoreParameters.srv
+  CalibrateIMU.srv
+  Reboot.srv
+  EnterBootloader.srv
 )
 
 #add_action_files(

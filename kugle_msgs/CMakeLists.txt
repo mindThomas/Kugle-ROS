@@ -9,6 +9,8 @@ add_message_files(
   DIRECTORY msg
   FILES
   Test.msg
+  ControllerInfo.msg
+  Encoders.msg
 )
 
 generate_messages(DEPENDENCIES geometry_msgs std_msgs actionlib_msgs)
