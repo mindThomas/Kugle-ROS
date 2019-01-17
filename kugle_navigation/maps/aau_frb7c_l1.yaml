@@ -1,0 +1,6 @@
+image: aau_frb7c_l1.pgm
+resolution: 0.04065
+origin: [-37.904, -35.123, 0.0]
+occupied_thresh: 0.9
+free_thresh: 0.1
+negate: 0

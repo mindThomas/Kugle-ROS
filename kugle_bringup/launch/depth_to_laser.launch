@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<launch>
+
+	<arg name="frame_id" default="depth"/>
+	<arg name="depth_image" default="/realsense/camera/depth/image_raw"/>
+	<arg name="depth_camera_info" default="/realsense/camera/depth/camera_info"/>
+	<arg name="scan_topic" default="/scan"/>
+	<arg name="use_nodelet" default="true"/>
+
+	<group if="$(arg use_nodelet)">
+		<node pkg="nodelet" type="nodelet" name="depth_to_laser_nodelet_manager" args="manager" output="screen"/>
+
+		<node pkg="nodelet" type="nodelet" name="depthimage_to_laserscan" args="load depthimage_to_laserscan/DepthImageToLaserScanNodelet depth_to_laser_nodelet_manager">
+			<!-- Pixel rows to use to generate the laserscan. For each column, the scan will
+			     return the minimum value for those pixels centered vertically in the image. -->
+			<param name="range_min" value="0.45"/>
+			<param name="scan_height" value="10"/> <!-- Use the 10 center rows of pixels to generate the scan - the closest depth pixel from each column is used as the distance -->
+			<param name="output_frame_id" value="/$(arg frame_id)"/>
+			<remap from="camera_info" to="$(arg depth_camera_info)" />
+			<remap from="image" to="$(arg depth_image)"/>
+			<remap from="scan" to="$(arg scan_topic)"/>
+	
+			<!-- Somehow topics here get prefixed by "$(arg camera)" when not inside an app namespace,
+			     so in this case "$(arg scan_topic)" must provide an absolute topic name (issue #88).
+			     Probably is a bug in the nodelet manager: https://github.com/ros/nodelet_core/issues/7 -->
+			<!--<remap from="$(arg camera)/image" to="$(arg depth_image)"/>
+			<remap from="$(arg camera)/scan" to="$(arg scan_topic)"/>-->
+		</node>
+	</group>
+	
+	<group if="$(eval not arg('use_nodelet'))">
+		<node pkg="depthimage_to_laserscan" type="depthimage_to_laserscan" name="depthimage_to_laserscan">
+			<param name="range_min" value="0.45"/>
+			<param name="scan_height" value="10"/> <!-- Use the 10 center rows of pixels to generate the scan - the closest depth pixel from each column is used as the distance -->
+			<param name="output_frame_id" value="/$(arg frame_id)"/>
+			<remap from="camera_info" to="$(arg depth_camera_info)" />
+			<remap from="image" to="$(arg depth_image)"/>
+			<remap from="scan" to="$(arg scan_topic)"/>
+		</node>
+	</group>
+
+</launch>

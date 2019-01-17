@@ -9,7 +9,7 @@
 
 	<!-- Launch SICK LiDAR nodes -->
 	<!-- Requires sick_tim to be installed: "sudo apt install ros-kinetic-sick-tim" -->
-	<node name="sick_tim571_2050101_1" pkg="sick_tim" type="sick_tim551_2050001" respawn="false" output="screen">
+	<node name="sick_tim571_2050101_left" pkg="sick_tim" type="sick_tim551_2050001" respawn="false" output="screen">
 		<!-- default values: -->
 		<!--
 		<param name="min_ang" type="double" value="-2.35619449019" />
@@ -23,6 +23,7 @@
 		<param name="device_number" type="int" value="0" />
 		<param name="range_min" type="double" value="0.05" />
 		-->
+		<param name="frame_id" type="str" value="sick_left_link" />
 		<param name="range_max" type="double" value="25.0" />
 	
 		<!-- Older versions of the scanner firmware report an incorrect time_increment.
@@ -39,7 +40,8 @@
 		<remap from="scan" to="laser/left/scan" />
 	</node>
 
-	<node name="sick_tim571_2050101_2" pkg="sick_tim" type="sick_tim551_2050001" respawn="false" output="screen">
+	<node name="sick_tim571_2050101_right" pkg="sick_tim" type="sick_tim551_2050001" respawn="false" output="screen">
+		<param name="frame_id" type="str" value="sick_right_link" />
 		<param name="range_max" type="double" value="25.0" />
 		<param name="device_number" type="int" value="1" /> 
 		<remap from="scan" to="laser/right/scan" />

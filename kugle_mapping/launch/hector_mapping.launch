@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<launch>
+  <include file="$(find hector_mapping)/launch/mapping_default.launch">
+    <arg name="pub_map_odom_transform" value="true" />
+    <arg name="base_frame" value="base_link" />
+    <arg name="odom_frame" value="odom" />
+    <!-- <arg name="tf_map_scanmatch_transform_frame_name" value="base_footprint" /> -->
+  </include>
+</launch>
