@@ -8,10 +8,21 @@
 	<arg name="base_frame_id" default="heading"/>
 	<arg name="global_frame_id" default="map"/>
 	<arg name="odom_topic" default="odom" />
-	<arg name="laser_topic" default="/laser/left/scan" />
+	<arg name="left_laser_topic" default="/laser/left/scan" />
+  	<arg name="right_laser_topic" default="/laser/right/scan" />
 	<arg name="initial_pose_x" default="0.0"/>
 	<arg name="initial_pose_y" default="0.0"/>
 	<arg name="initial_pose_a" default="0.0"/>
+
+  	<arg name="laser_topic" default="/laser/combined/scan"/>
+	
+	<node pkg="topic_tools" type="relay" name="laser_left_relay" output="screen" args="$(arg left_laser_topic) $(arg laser_topic)">
+		<param name="lazy" value="true"/>
+	</node>
+
+	<node pkg="topic_tools" type="relay" name="laser_right_relay" output="screen" args="$(arg right_laser_topic) $(arg laser_topic)">
+		<param name="lazy" value="true"/>
+	</node>
 
 	<node pkg="gmapping" type="slam_gmapping" name="slam_gmapping" output="screen">
 		<param name="base_frame" value="$(arg base_frame_id)"/>

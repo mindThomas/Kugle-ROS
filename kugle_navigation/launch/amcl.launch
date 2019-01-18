@@ -5,10 +5,21 @@
   <arg name="base_frame_id"   default="heading"/>
   <arg name="global_frame_id" default="map"/>
   <arg name="odom_topic" default="odom" />
-  <arg name="laser_topic" default="/laser/left/scan" />
+  <arg name="left_laser_topic" default="/laser/left/scan" />
+  <arg name="right_laser_topic" default="/laser/right/scan" />
   <arg name="initial_pose_x" default="0.0"/>
   <arg name="initial_pose_y" default="0.0"/>
   <arg name="initial_pose_a" default="0.0"/>
+
+  <arg name="laser_topic" default="/laser/combined/scan"/>
+
+  <!-- AMCL supports multiple LiDAR scans as long as they come on the same topic. We therefore fuse the left and right scan into one topic -->
+  <node pkg="topic_tools" type="relay" name="laser_left_relay" output="screen" args="$(arg left_laser_topic) $(arg laser_topic)">
+    <param name="lazy" value="true"/>
+  </node>
+  <node pkg="topic_tools" type="relay" name="laser_right_relay" output="screen" args="$(arg right_laser_topic) $(arg laser_topic)">
+    <param name="lazy" value="true"/>
+  </node>
 
   <!-- Map of the lab -->
   <arg name="map_file" default="$(find kugle_navigation)/maps/gazebo_control_lab.yaml"/>
@@ -18,9 +29,13 @@
   <node pkg="amcl" type="amcl" name="amcl" output="screen">
     <param name="use_map_topic"             value="false"/>
     <param name="odom_model_type"           value="omni-corrected"/>
+    <!-- estimated rotational motion noise of the odometry during rotational motion -->
     <param name="odom_alpha1"               value="0.005"/>
+    <!-- estimated rotational motion noise of the odometry during translation motion -->
     <param name="odom_alpha2"               value="0.005"/>
+    <!-- estimated translation motion noise of the odometry during translation motion -->
     <param name="odom_alpha3"               value="0.010"/>
+    <!-- estimated translation motion noise of the odometry during rotational motion -->
     <param name="odom_alpha4"               value="0.005"/>
     <param name="odom_alpha5"               value="0.003"/>
     <param name="gui_publish_rate"          value="10.0"/>

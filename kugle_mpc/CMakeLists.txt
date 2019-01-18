@@ -2,18 +2,29 @@ cmake_minimum_required(VERSION 2.8.3)
 project(kugle_mpc)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-# add_compile_options(-std=c++11)
+add_compile_options(-std=c++11)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   roscpp
+  base_local_planner
+  pluginlib
+  tf
+  costmap_2d
+  nav_core
+  nav_msgs
 )
 
 ## System dependencies are found with CMake's conventions
-# find_package(Boost REQUIRED COMPONENTS system)
+find_package(Eigen3 REQUIRED)
 
+find_package(Boost REQUIRED COMPONENTS system signals python thread program_options regex QUIET)
+mark_as_advanced(BOOST_THREAD_LIBRARY)
+link_directories(... ${Boost_LIBRARY_DIRS})
+
+find_package(OpenCV 3.3.1 REQUIRED core imgproc highgui) # contrib
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -101,10 +112,9 @@ find_package(catkin REQUIRED COMPONENTS
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES kugle_mpc
-#  CATKIN_DEPENDS roscpp
-#  DEPENDS system_lib
+  INCLUDE_DIRS include
+  LIBRARIES kugle_mpc_plugin
+  CATKIN_DEPENDS roscpp nav_msgs pluginlib
 )
 
 ###########
@@ -114,9 +124,11 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-# include
+  include
   ${catkin_INCLUDE_DIRS}
 )
+
+add_definitions(${EIGEN3_DEFINITIONS})
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
@@ -147,6 +159,10 @@ include_directories(
 # target_link_libraries(${PROJECT_NAME}_node
 #   ${catkin_LIBRARIES}
 # )
+
+add_library(kugle_mpc_plugin src/kugle_mpc_plugin.cpp)
+add_dependencies(kugle_mpc_plugin ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(kugle_mpc_plugin ${catkin_LIBRARIES})
 
 #############
 ## Install ##
