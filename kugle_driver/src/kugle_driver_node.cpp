@@ -50,13 +50,13 @@
 #include <geometry_msgs/TransformStamped.h>
 
 /* Include messages */
-#include "geometry_msgs/Quaternion.h"
-#include "geometry_msgs/Twist.h"
-#include "nav_msgs/Odometry.h"
-#include "sensor_msgs/Imu.h"
-#include "sensor_msgs/MagneticField.h"
-#include "sensor_msgs/BatteryState.h"
-#include "std_msgs/String.h"
+#include <geometry_msgs/Quaternion.h>
+#include <geometry_msgs/Twist.h>
+#include <nav_msgs/Odometry.h>
+#include <sensor_msgs/Imu.h>
+#include <sensor_msgs/MagneticField.h>
+#include <sensor_msgs/BatteryState.h>
+#include <std_msgs/String.h>
 
 /* Include generated Services */
 #include <kugle_srvs/SetParameter.h>

@@ -102,6 +102,9 @@ find_package(OpenCV 3.3.1 REQUIRED core imgproc highgui) # contrib
 #   cfg/DynReconf2.cfg
 # )
 
+# Add MPC library
+add_subdirectory(libs/mpc)
+
 ###################################
 ## catkin specific configuration ##
 ###################################
@@ -125,6 +128,7 @@ catkin_package(
 ## Your package locations should be listed before other locations
 include_directories(
   include
+  ${EIGEN3_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
 )
 
@@ -161,8 +165,8 @@ add_definitions(${EIGEN3_DEFINITIONS})
 # )
 
 add_library(kugle_mpc_plugin src/kugle_mpc_plugin.cpp)
-add_dependencies(kugle_mpc_plugin ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(kugle_mpc_plugin ${catkin_LIBRARIES})
+add_dependencies(kugle_mpc_plugin ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} mpc)
+target_link_libraries(kugle_mpc_plugin ${catkin_LIBRARIES} mpc)
 
 #############
 ## Install ##
