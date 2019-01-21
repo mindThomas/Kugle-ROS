@@ -88,12 +88,12 @@ namespace MPC
         if (order() >= other.order()) {
             out.coeffs_ = coeffs_;
             for (size_t i = 0; i < other.coeffs_.size(); i++)
-                out.coeffs_[i] += other.coeffs_[i];
+                out.coeffs_.at(i) += other.coeffs_.at(i);
         }
         else {
             out.coeffs_ = other.coeffs_;
             for (size_t i = 0; i < coeffs_.size(); i++)
-                out.coeffs_[i] += coeffs_[i];
+                out.coeffs_.at(i) += coeffs_.at(i);
         }
 
         return out;
@@ -106,14 +106,34 @@ namespace MPC
         if (order() >= other.order()) {
             out.coeffs_ = coeffs_;
             for (size_t i = 0; i < other.coeffs_.size(); i++)
-                out.coeffs_[i] -= other.coeffs_[i];
+                out.coeffs_.at(i) -= other.coeffs_.at(i);
         }
         else {
             out.coeffs_ = other.coeffs_;
             for (size_t i = 0; i < coeffs_.size(); i++)
-                out.coeffs_[i] -= coeffs_[i];
+                out.coeffs_.at(i) -= coeffs_.at(i);
         }
 
+        return out;
+    }
+
+    Polynomial Polynomial::operator+(const double& offset) const
+    {
+        Polynomial out;
+        if (coeffs_.size() == 0) return out;
+
+        out.coeffs_ = coeffs_;
+        out.coeffs_[0] += offset;
+        return out;
+    }
+
+    Polynomial Polynomial::operator-(const double& offset) const
+    {
+        Polynomial out;
+        if (coeffs_.size() == 0) return out;
+
+        out.coeffs_ = coeffs_;
+        out.coeffs_[0] -= offset;
         return out;
     }
 
@@ -121,13 +141,18 @@ namespace MPC
     {
         std::cout << "Polynomial:" << std::endl;
         std::cout << "   y = ";
-        for (unsigned int i = order(); i >= 1; i--) {
-            if (i > 1)
-                std::cout << coeffs_[i] << "*t^" << i << " + ";
-            else
-                std::cout << coeffs_[i] << "*t + ";
+        if (order() < 0) {
+            std::cout << "0" << std::endl << std::endl;
+            return;
         }
-        std::cout << coeffs_[0] << std::endl;
+
+        for (int i = order(); i >= 1; i--) {
+            if (i > 1)
+                std::cout << coeffs_.at(i) << "*t^" << i << " + ";
+            else
+                std::cout << coeffs_.at(i) << "*t + ";
+        }
+        std::cout << coeffs_.at(0) << std::endl;
         std::cout << std::endl;
     }
 
@@ -176,9 +201,9 @@ namespace MPC
         return evaluate(tVec);
     }
 
-    unsigned int Polynomial::order() const
+    int Polynomial::order() const
     {
-        return coeffs_.size() - 1;
+        return (int)coeffs_.size() - 1;
     }
 
     Polynomial Polynomial::squared() const
@@ -190,15 +215,20 @@ namespace MPC
 
         // f^2(x) = sum(sum(c_i * c_j * x^(i+j))
         // The resulting coefficients, coeff_k = c_i*c_j | i+j=k
-        unsigned int n = order(); // input polynomial order
-        unsigned int m = 2*n; // squared (output) polynomial order
+        int n = order(); // input polynomial order
+        int m = 2*n; // squared (output) polynomial order
+
+        if (m < 0) {
+            Polynomial empty;
+            return empty;
+        }
 
         Polynomial squared(m);
-        for (unsigned int k = 0; k <= m; k++) {
-            for (unsigned int i = 0; i <= n; i++) {
-                for (unsigned int j = 0; j <= n; j++) {
+        for (int k = 0; k <= m; k++) {
+            for (int i = 0; i <= n; i++) {
+                for (int j = 0; j <= n; j++) {
                     if (i + j == k) {
-                        squared.coeffs_[k] = squared.coeffs_[k] + coeffs_[i] * coeffs_[j];
+                        squared.coeffs_.at(k) = squared.coeffs_.at(k) + coeffs_.at(i) * coeffs_.at(j);
                     }
                 }
             }
@@ -214,13 +244,62 @@ namespace MPC
         // f'(x) = df/dx = n*c_n*x^(n-1) + (n-1)*c_n-1*x^(n-2) + ... +
         // f'(x) = df/dx = n*c_n*x^(n-1) + (n-1)*c_n-1*x^(n-2) + ... + 2*c_2*x + 1*c_1
         // Coefficients are ordered such that coeff[0] = c_0  (lowest order)
-        unsigned int n = order();
+        int n = order();
+
+        if (n < 0) {
+            Polynomial empty;
+            return empty;
+        }
 
         Polynomial derivative(n-1);
-        for (unsigned int i = 0; i <= (n-1); i++) {
-            derivative.coeffs_[i] = (i+1) * coeffs_[i+1];
+        for (int i = 0; i <= (n-1); i++) {
+            derivative.coeffs_.at(i) = (i+1) * coeffs_.at(i+1);
         }
         return derivative;
+    }
+
+    double Polynomial::getCoefficient(unsigned int index)
+    {
+        if (int(index) > order())
+            return 0;
+        else
+            return coeffs_.at(index);
+    }
+
+    double Polynomial::findMinimum(double s_init, double s_lower, double s_upper, double stoppingCriteria, unsigned int maxIterations)
+    {
+        // Find the minimum by Newton minimization
+        if (order() < 0) return 0;
+
+        Polynomial dPoly = derivative();
+        Polynomial ddPoly = dPoly.derivative();
+
+        // Newton's method - https://en.wikipedia.org/wiki/Newton%27s_method_in_optimization
+        bool converged = false;
+        unsigned int iterations = 0;
+        double s = s_init;
+        double delta_s;
+
+        while (!converged && iterations < maxIterations) {
+            double FirstDerivative = dPoly.evaluate(s); // first derivative, for higher dimensions it would be the Gradient
+            double SecondDerivative = ddPoly.evaluate(s); // second derivative, for higher dimensions it would be the Hessian
+
+            delta_s = -FirstDerivative / SecondDerivative;
+            s = s + delta_s;
+
+            if (s < s_lower)
+                s = s_lower;
+
+            if (s > s_upper)
+                s = s_upper;
+
+            if (std::abs(delta_s) < stoppingCriteria)
+                converged = true;
+
+            iterations = iterations + 1;
+        }
+
+        return s;
     }
 
     void Polynomial::FitPoints(unsigned int order, std::vector<double>& tVec, std::vector<double>& values, bool EnforceBeginEndConstraint, bool EnforceBeginEndAngleConstraint)
@@ -343,7 +422,7 @@ namespace MPC
 
         // create a matrix of just zeros and fill top part with inverse singular values in a diagonal matrix
         Eigen::MatrixXd Sinv = Eigen::MatrixXd::Zero(svd.singularValues().rows(), A_.rows());
-        Sinv << svd.singularValues().asDiagonal().inverse().toDenseMatrix();
+        Sinv.block(0, 0, svd.singularValues().rows(), svd.singularValues().rows()) = svd.singularValues().asDiagonal().inverse().toDenseMatrix();
 #if PATH_DEBUG
         std::cout << "Sinv = " << std::endl << Sinv << std::endl;
 #endif
@@ -362,7 +441,7 @@ namespace MPC
         return x;
     }
 
-    Path::Path() : computed_dsquared_(false), s_end_(-1)
+    Path::Path() : computed_dsquared_(false), s_end_(0)
     {
 
     }
@@ -380,6 +459,17 @@ namespace MPC
     Path::~Path()
     {
 
+    }
+
+    // Assignment operator
+    Path& Path::operator=(const Path& other)
+    {
+        poly_x_ = other.poly_x_;
+        poly_y_ = other.poly_y_;
+        s_end_ = other.s_end_;
+        computed_dsquared_ = other.computed_dsquared_;
+        dsquared_ = other.dsquared_;
+        return *this;
     }
 
     Eigen::Vector2d Path::get(double s)
@@ -407,6 +497,24 @@ namespace MPC
     std::vector<Eigen::Vector2d> Path::operator()(std::vector<double> sVec)
     {
         return get(sVec);
+    }
+
+    int Path::order()
+    {
+        if (poly_x_.order() >= poly_y_.order())
+            return poly_x_.order();
+        else
+            return poly_y_.order();
+    }
+
+    double Path::getXcoefficient(unsigned int index)
+    {
+        return poly_x_.getCoefficient(index);
+    }
+
+    double Path::getYcoefficient(unsigned int index)
+    {
+        return poly_y_.getCoefficient(index);
     }
 
     double Path::ArcCurveLength(double t)
@@ -528,6 +636,75 @@ namespace MPC
         cv::waitKey( 5 );
     }
 
+    void Path::plot(cv::Mat& image, cv::Scalar color, bool drawXup, double x_min, double y_min, double x_max, double y_max)
+    {
+        double xres = image.cols;
+        double yres = image.rows;
+
+        cv::line(image, cv::Point(0, yres/2), cv::Point(xres-1, yres/2), cv::Scalar(128,128,128), 1, 8, 0);
+        cv::line(image, cv::Point(xres/2, 0), cv::Point(xres/2, yres-1), cv::Scalar(128,128,128), 1, 8, 0);
+
+        // Scale range (x_min:x_max) and (y_min:y_max) to (0:499)
+        double scale_x = xres / (x_max - x_min);
+        double scale_y = yres / (y_max - y_min);
+        double center_x = (x_min + x_max) / 2.0;
+        double center_y = (y_min + y_max) / 2.0;
+
+        if (s_end_ <= 0) return; // can not plot if length is unknown
+        double s_spacing = s_end_ / 99.0;
+
+        Eigen::Vector2d p_prev = get(0);
+        Eigen::Vector2d p;
+
+        for (unsigned int s_idx = 0; s_idx < 100; s_idx++) {
+            double s = s_spacing * s_idx;
+            p = get(s);
+
+            float x = (p[0]-x_min) * scale_x;
+            float y = (p[1]-y_min) * scale_y;
+
+            if (x >= 0 && x < xres && y >= 0 && y < yres) {
+                cv::Point point;
+                if (drawXup) // draw with robot x-axis pointing up in plot
+                    point = cv::Point(yres-y,xres-x);
+                else
+                    point = cv::Point(x,yres-y);
+
+                // Draw a line
+                //cv::line(image, cv::Point(p_prev[0], p_prev[1]), point, cv::Scalar( 0, 0, 0 ), 1, 8 );
+                cv::drawMarker(image, point, color, cv::MARKER_CROSS, 3, 1, 8 );
+
+                p_prev = p;
+            }
+        }
+    }
+
+    void Path::PlotPoint(double sValue, cv::Mat& image, cv::Scalar color, bool drawXup, double x_min, double y_min, double x_max, double y_max)
+    {
+        double xres = image.cols;
+        double yres = image.rows;
+        Eigen::Vector2d p = get(sValue);
+
+        // Scale range (x_min:x_max) and (y_min:y_max) to (0:499)
+        double scale_x = xres / (x_max - x_min);
+        double scale_y = yres / (y_max - y_min);
+        double center_x = (x_min + x_max) / 2.0;
+        double center_y = (y_min + y_max) / 2.0;
+
+        float x = (p[0]-x_min) * scale_x;
+        float y = (p[1]-y_min) * scale_y;
+
+        if (x >= 0 && x < xres && y >= 0 && y < yres) {
+            cv::Point point;
+            if (drawXup) // draw with robot x-axis pointing up in plot
+                point = cv::Point(yres-y,xres-x);
+            else
+                point = cv::Point(x,yres-y);
+
+            cv::drawMarker(image, point, color, cv::MARKER_STAR, 6, 2, 8);
+        }
+    }
+
     void Path::FitTrajectory(Trajectory& trajectory, unsigned int approximationOrder, bool EnforceBeginEndConstraint, bool EnforceBeginEndAngleConstraint)
     {
         // approximationOrder is for x(t) and y(t) fitting
@@ -591,8 +768,32 @@ namespace MPC
         std::cout << "x(s) ";
         poly_x_.print();
         std::cout << "y(s) ";
-        poly_x_.print();
+        poly_y_.print();
     }
 
+    double Path::length()
+    {
+        return s_end_;
+    }
+
+    double Path::FindClosestPoint(const Eigen::Vector2d& position)
+    {
+        // Find point on path being closest to the input position and return the corresponding path parameter (s-value) at this point
+        // First we create a centered path around the input position, by taking the two polynomial and subtracting the position value
+        Polynomial xs_centered = poly_x_ - position[0];
+        Polynomial ys_centered = poly_y_ - position[1];
+        // Given this centered polynomial, the distance to any point along the original path is defined by the function:
+        //   dist(s) = sqrt( f_x(s)^2 + f_y(s)^2 )
+        // Since this is the function we want to minimize we create this function as a distance polynomial such that we can take the derivative and find the minimum point
+        Polynomial xs_squared = xs_centered.squared();
+        Polynomial ys_squared = ys_centered.squared();
+        // And since we want to find the closest distance, we can also just
+        // minimize the squared distance: dist(s)^2
+        //   dist(s)^2 = f_x(s)^2 + f_y(s)^2
+        Polynomial dist_squared = xs_squared + ys_squared;
+
+        // Finally we find the minimum distance, s, through a Newton-based minimization
+        return dist_squared.findMinimum(0, 0, s_end_, 0.001, 100);
+    }
 
 }

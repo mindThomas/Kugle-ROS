@@ -25,14 +25,15 @@
 
 	<!-- respawn=true means that in case the node shuts down it will be restarted -->
 	<!--<group ns="kugle">-->
-	<!--<node name="quaternion_integrator_node" pkg="kugle_misc" type="quaternion_integrator_node" respawn="true" output="screen"> 
-		<param name="omega_topic" type="string" value="cmd_omega" />
+	<node name="quaternion_integrator_node" pkg="kugle_misc" type="quaternion_integrator_node" respawn="true" output="screen"> 
+		<param name="angular_velocity_body_topic" type="string" value="cmd_vel_angular" />
+		<param name="angular_velocity_inertial_topic" type="string" value="cmd_vel_angular_inertial" />
 		<param name="quaternion_topic" type="string" value="cmd_quaternion" />
 		<param name="timeout" type="double" value="1.0" />
 		<param name="rate" type="double" value="200" />
-	</node>-->
+	</node>
 
-	<node name="velocity_controller_node" pkg="kugle_misc" type="velocity_controller_node" respawn="true" output="screen"> 
+	<!--<node name="velocity_controller_node" pkg="kugle_misc" type="velocity_controller_node" respawn="true" output="screen"> 
 		<remap from="cmd_quaternion" to="cmd_quaternion" />
 		<remap from="odom" to="odom" />
 		<remap from="cmd_vel" to="cmd_vel" />
@@ -43,7 +44,7 @@
 		<param name="max_tilt" type="double" value="5.0" />
 		<param name="integral_gain" type="double" value="0.0" />
 		<param name="max_integral_correction" type="double" value="8.0" />
-	</node>
+	</node>-->
 	<!--</group>-->
 
 </launch>

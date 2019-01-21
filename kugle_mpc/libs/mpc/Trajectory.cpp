@@ -36,6 +36,11 @@
 namespace MPC
 {
 
+    double TrajectoryPoint::EuclideanDistance(const TrajectoryPoint& other)
+    {
+        return sqrt( (point[0]-other.point[0])*(point[0]-other.point[0]) + (point[1]-other.point[1])*(point[1]-other.point[1]) );
+    }
+
     Trajectory::Trajectory() : lastSeq_(-1), sorted_(false)
     {
 
@@ -68,12 +73,18 @@ namespace MPC
     Trajectory& Trajectory::operator=(const Trajectory& other)
     {
         points_ = other.points_;
+        sorted_ = other.sorted_;
+        // Find largest sequence number
+        for (auto& p : points_) {
+            if (p.seq > lastSeq_) lastSeq_ = p.seq;
+        }
         return *this;
     }
 
     void Trajectory::AddPoint(TrajectoryPoint& point)
     {
         points_.push_back(point);
+        if (point.seq > lastSeq_) lastSeq_ = point.seq;
         sorted_ = false;
     }
 
@@ -89,10 +100,10 @@ namespace MPC
         sorted_ = false;
     }
 
-    void Trajectory::AddPoint(unsigned int seq, double x, double y, double heading, double velocity)
+    void Trajectory::AddPoint(int seq, double x, double y, double heading, double velocity)
     {
         points_.push_back(TrajectoryPoint(seq, x, y, heading, velocity));
-        lastSeq_ = seq;
+        if (seq > lastSeq_) lastSeq_ = seq;
         sorted_ = false;
     }
 
@@ -198,7 +209,26 @@ namespace MPC
         extractedTrajectory.sorted_ = false;
     }
 
-    void Trajectory::SequenceExtract(Trajectory& extractedTrajectory, unsigned int seq_min, unsigned int seq_max)
+    void Trajectory::ApproxCurveLengthExtract(Trajectory& extractedTrajectory, double curve_length_max)
+    {
+        double curve_length_current = 0;
+        TrajectoryPoint p_prev = points_.at(0);
+
+        extractedTrajectory.clear();
+        for (auto& p : points_) {
+            double curve_length = p.EuclideanDistance(p_prev);
+            curve_length_current += curve_length;
+            extractedTrajectory.AddPoint(p);
+
+            if (curve_length_current >= curve_length_max)
+                break;
+
+            p_prev = p;
+        }
+        extractedTrajectory.sorted_ = false;
+    }
+
+    void Trajectory::SequenceExtract(Trajectory& extractedTrajectory, int seq_min, int seq_max)
     {
         extractedTrajectory.clear();
         for (auto& p : points_) {
@@ -208,14 +238,21 @@ namespace MPC
         extractedTrajectory.sorted_ = false;
     }
 
-    bool Trajectory::find(TrajectoryPoint& foundPoint, unsigned int seq)
+    bool Trajectory::find(int seq, TrajectoryPoint& foundPoint)
     {
         for (auto& p : points_) {
-            if (p.seq != -1 && (unsigned int)p.seq == seq)
+            if (p.seq != -1 && p.seq == seq) {
                 foundPoint = p;
                 return true;
+            }
         }
         return false;
+    }
+
+    bool Trajectory::find(int seq)
+    {
+        TrajectoryPoint foundPoint;
+        return find(seq, foundPoint);
     }
 
     void Trajectory::print()
@@ -250,6 +287,11 @@ namespace MPC
         }
 
         return distance;
+    }
+
+    int Trajectory::GetLastSequenceID()
+    {
+        return lastSeq_;
     }
 
     std::vector<double> Trajectory::GetDistanceList()
@@ -287,6 +329,42 @@ namespace MPC
             yValues.push_back(p.point[1]);
         }
         return yValues;
+    }
+
+    void Trajectory::plot(cv::Mat& image, cv::Scalar color, bool drawXup, bool plotText, double x_min, double y_min, double x_max, double y_max)
+    {
+        double xres = image.cols;
+        double yres = image.rows;
+
+        cv::line(image, cv::Point(0, yres/2), cv::Point(xres-1, yres/2), cv::Scalar(128,128,128), 1, 8, 0);
+        cv::line(image, cv::Point(xres/2, 0), cv::Point(xres/2, yres-1), cv::Scalar(128,128,128), 1, 8, 0);
+
+        // Scale range (x_min:x_max) and (y_min:y_max) to (0:499)
+        double scale_x = xres / (x_max - x_min);
+        double scale_y = yres / (y_max - y_min);
+        double center_x = (x_min + x_max) / 2.0;
+        double center_y = (y_min + y_max) / 2.0;
+
+        for (auto& p : points_) {
+            std::ostringstream text;
+            text << p.seq;
+
+            float x = (p.point[0]-x_min) * scale_x;
+            float y = (p.point[1]-y_min) * scale_y;
+
+            if (x >= 0 && x < xres && y >= 0 && y < yres) {
+                cv::Point point;
+                if (drawXup) // draw with robot x-axis pointing up in plot
+                    point = cv::Point(yres-y,xres-x);
+                else
+                    point = cv::Point(x,yres-y);
+                cv::drawMarker(image, point, color, cv::MARKER_CROSS, 3, 2, 8);
+                if (plotText) {
+                    cv::putText(image, text.str(), point + cv::Point(10, 10),
+                                cv::FONT_HERSHEY_PLAIN, 1.5, cvScalar(0, 0, 0), 1.5, CV_AA);
+                }
+            }
+        }
     }
 
     void Trajectory::plot(bool drawXup, bool plotText, double x_min, double y_min, double x_max, double y_max)
@@ -371,10 +449,107 @@ namespace MPC
         return trajectory;
     }
 
-    /*
-    Path Trajectory::ApproximatePath()
+    void Trajectory::FixSequenceOrder(Trajectory& correctedTrajectory, int startSeqID, int endSeqID)
     {
+        // If the trajectory is looping, the window trajectory can include jumps from a small sequence ID to a large sequence ID because the trajectory is incorrectly ordered/sorted
+        // This function will both sort the trajectory and fix these types of jumps, such that the first element in the trajectory will indeed be the first element of a continuous sequence
+        // So if the trajectory includes both start and end, the first element will be on the end part, since this is what is continuous with the start part
+        sort();
 
+        // Check if the trajectory includes both the start and end index
+        TrajectoryPoint startPoint, endPoint;
+        if (find(startSeqID, startPoint) && find(endSeqID, endPoint)) {
+            // Ensure that the start and end point are not belonging to the actual start and end of the extracted trajectory - as we should not reorder anything in this case
+            /*if (startPoint.seq == points_.front().seq && endPoint.seq == points_.back().seq) {
+                correctedTrajectory = *this;
+                return;
+            }*/
+
+            // Find the element at which the jump happens closest to the end point
+            int prevSeqID = points_.at(0).seq;
+            int jumpIndex = 0;
+            for (int i = 0; i < points_.size(); i++) {
+                if (points_[i].seq == endPoint.seq) break; // stop looking for jumps when we reach the end point
+                if ((points_[i].seq - prevSeqID) > 1) {
+                    jumpIndex = i;
+                }
+                prevSeqID = points_[i].seq;
+            }
+
+            // Now create a corrected trajectory where the sequence order is fixed
+            correctedTrajectory.clear();
+            for (int i = jumpIndex; i < points_.size(); i++)
+                correctedTrajectory.AddPoint(points_[i]);
+            for (int i = 0; i < jumpIndex; i++) {
+                TrajectoryPoint pTmp = points_[i];
+                pTmp.seq += endSeqID + 1; // make the ending sequence part of the trajectory have greater sequence ID's such that the whole trajectory sequence becomes a series of continuous ID's
+                correctedTrajectory.AddPoint(pTmp);
+            }
+
+            return;
+        }
+        else { // there is no need for begin/end reordering, since the start and end indices are not both within the trajectory
+            correctedTrajectory = *this;
+            return;
+        }
     }
-    */
+
+    void Trajectory::ExtractContinuousClosestSequence(Trajectory& continuousSequenceTrajectory, Eigen::Vector2d position)
+    {
+        // Extract a continuous sequence of trajectory points closest to the input position
+        if (points_.size() <= 0) return; // trajectory is empty
+
+        // Find indices where there is a jump in the sequence index
+        int prevSeqID = points_.at(0).seq;
+        std::vector<int> jumpIndex;
+        jumpIndex.push_back(0);
+        jumpIndex.push_back(points_.size());
+        for (int i = 0; i < points_.size(); i++) {
+            if ((points_[i].seq - prevSeqID) > 1) {
+                jumpIndex.push_back(i); // jump indices are the index for the element AFTER a jump occured - hence a jump happens between points_[jumpIndex-1] and points_[jumpIndex]
+            }
+            prevSeqID = points_[i].seq;
+        }
+
+        // Find point in trajectory being closest to input position
+        TrajectoryPoint pos(-1, position[0], position[1]);
+        double smallestDistance = std::numeric_limits<double>::infinity();
+        int smallestDistanceIndex = 0;
+        for (int i = 0; i < points_.size(); i++) {
+            double distance = points_[i].EuclideanDistance(pos);
+            if (distance < smallestDistance) {
+                smallestDistanceIndex = i;
+                smallestDistance = distance;
+            }
+        }
+
+        // Add this closest index to the jump index list, such that we can sort this list and find a continuous sequence including the closest point
+        jumpIndex.push_back(smallestDistanceIndex);
+        std::sort(jumpIndex.begin(), jumpIndex.end());
+
+        // Now find the closest point index in the sorted sequence and extract start and end index of the resulting trajectory
+        int startIndex = 0, endIndex = points_.size()-1;
+        for (int i = 0; i < jumpIndex.size(); i++) {
+            if (jumpIndex[i] == smallestDistanceIndex) {
+                if (i > 0)
+                    startIndex = jumpIndex[i] - 2; // only include trajectory points from input position and onwards (however include 2 "old" points from back in time on the path)
+                else
+                    startIndex = jumpIndex[i] - 2;
+
+                if (i < (jumpIndex.size()-1))
+                    endIndex = jumpIndex[i+1] - 1; // minus 1 because the jump index position marks the index AFTER the jump
+                else
+                    endIndex = jumpIndex[i] - 1;
+            }
+        }
+
+        if (startIndex < 0) startIndex = 0;
+        if (endIndex >= points_.size()) endIndex = points_.size()-1;
+
+        // Extract the continuous sequence trajectory
+        continuousSequenceTrajectory.clear();
+        for (int i = startIndex; i <= endIndex; i++) {
+            continuousSequenceTrajectory.AddPoint(points_[i]);
+        }
+    }
 }

@@ -2,9 +2,12 @@
 <launch>
 
 	<arg name="odom_frame_id"   default="odom"/>
+	<arg name="base_link_frame_id"   default="base_link"/>
+	<arg name="heading_frame_id"   default="heading"/>
 	<arg name="base_frame_id"   default="heading"/>
 	<arg name="global_frame_id" default="map"/>
-  	<arg name="odom_topic" default="odom" />
+  	<arg name="odom_topic" default="/odom" />
+	<arg name="cmd_vel_topic" default="/cmd_vel_angular_inertial" />
 	<arg name="left_laser_topic" default="/laser/left/scan" />
 	<arg name="right_laser_topic" default="/laser/right/scan" />
 	<arg name="initial_pose_x" default="0.0"/>
@@ -30,12 +33,17 @@
 		<param name="local_costmap/global_frame" value="$(arg odom_frame_id)"/>
 		<param name="local_costmap/robot_base_frame" value="$(arg base_frame_id)"/>
 		<param name="DWAPlannerROS/global_frame_id" value="$(arg odom_frame_id)"/>
-		<param name="KugleMPC/global_frame_id" value="$(arg odom_frame_id)"/>
+
+		<param name="KugleMPC/map_frame" value="$(arg global_frame_id)"/>
+		<param name="KugleMPC/mpc_frame" value="$(arg odom_frame_id)"/>
+		<param name="KugleMPC/heading_frame" value="$(arg heading_frame_id)"/>
+		<param name="KugleMPC/base_link_frame" value="$(arg base_link_frame_id)"/>
+		<remap from="KugleMPC/odom" to="$(arg odom_topic)"/>
 
 		<param name="base_local_planner" value="kugle_mpc/KugleMPC"/>
 
-		<remap from="odom" to="$(arg odom_topic)"/>
 		<remap from="scan" to="$(arg laser_topic)"/>
+		<remap from="cmd_vel" to="$(arg cmd_vel_topic)"/>
 	</node>
 
 </launch>

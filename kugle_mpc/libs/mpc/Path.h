@@ -33,6 +33,11 @@
 
 #include "Trajectory.h"
 
+/* For visualization/plotting only */
+#include <opencv2/opencv.hpp>
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+
 namespace MPC
 {
 
@@ -49,6 +54,8 @@ namespace MPC
             Polynomial& operator=(const Polynomial& other);
             Polynomial operator+(const Polynomial& other) const;
             Polynomial operator-(const Polynomial& other) const;
+            Polynomial operator+(const double& offset) const;
+            Polynomial operator-(const double& offset) const;
 
             void print();
 
@@ -57,9 +64,13 @@ namespace MPC
             std::vector<double> evaluate(std::vector<double> tVec);
             std::vector<double> operator()(std::vector<double> tVec);
 
-            unsigned int order() const;
+            int order() const;
             Polynomial squared() const;
             Polynomial derivative() const;
+
+            double findMinimum(double s_init, double s_lower, double s_upper, double stoppingCriteria, unsigned int maxIterations);
+
+            double getCoefficient(unsigned int index);
 
         //private:
             void FitPoints(unsigned int order, std::vector<double>& tVec, std::vector<double>& values, bool EnforceBeginEndConstraint, bool EnforceBeginEndAngleConstraint);
@@ -77,6 +88,8 @@ namespace MPC
             Path(Trajectory& trajectory, unsigned int approximationOrder = 6, bool EnforceBeginEndConstraint = true, bool EnforceBeginEndAngleConstraint = true);
             ~Path();
 
+            Path& operator=(const Path& other);
+
             Eigen::Vector2d get(double s);
             Eigen::Vector2d operator()(double s);
 
@@ -84,7 +97,17 @@ namespace MPC
             std::vector<Eigen::Vector2d> operator()(std::vector<double> sVec);
 
             void plot(bool drawXup = false, double x_min = -2.5, double y_min = -2.5, double x_max = 2.5, double y_max = 2.5);
+            void plot(cv::Mat& image, cv::Scalar color, bool drawXup = false, double x_min = -2.5, double y_min = -2.5, double x_max = 2.5, double y_max = 2.5);
+            void PlotPoint(double sValue, cv::Mat& image, cv::Scalar color, bool drawXup = false, double x_min = -2.5, double y_min = -2.5, double x_max = 2.5, double y_max = 2.5);
             void print();
+
+            int order();
+
+            double getXcoefficient(unsigned int index);
+            double getYcoefficient(unsigned int index);
+            double length();
+
+            double FindClosestPoint(const Eigen::Vector2d& position);
 
         private:
             double ArcCurveLength(double t);

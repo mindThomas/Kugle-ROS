@@ -29,6 +29,21 @@
 #include <limits>
 
 #include "acado_common.h"
+#include "acado_indices.h"
+
+#include "Path.h"
+#include "Trajectory.h"
+
+#include <Eigen/Core>
+#include <Eigen/Dense>
+#include <Eigen/Geometry>
+
+#include <boost/math/quaternion.hpp> // see https://www.boost.org/doc/libs/1_66_0/libs/math/doc/html/quaternions.html
+
+/* For visualization/plotting only */
+#include <opencv2/opencv.hpp>
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
 
 namespace MPC {
 
@@ -38,6 +53,9 @@ class MPC
 {
 	public:
 		static const unsigned int HorizonLength = ACADO_N;		// 'WNmat' needs to be a double matrix of size [ACADO_NY x ACADO_NY]
+
+	private:
+		static ACADO_t& ACADO;
 		static const unsigned int num_StateVariables = ACADO_NX;	// 'xInit' needs to be a double vector of size [ACADO_NX x 1]
 		static const unsigned int num_Inputs = ACADO_NU;		// 'uInit' needs to be a double vector of size [ACADO_NU x 1]		
 		static const unsigned int num_Outputs = ACADO_NY;		// 'Wmat' needs to be a double matrix of size [ACADO_NY x ACADO_NY]
@@ -97,13 +115,105 @@ class MPC
 	#endif
 #endif
 
+    public:
+        typedef struct state_t
+        {
+            boost::math::quaternion<double> quaternion;
+            Eigen::Vector2d position;
+            Eigen::Vector2d velocity;
+            double pathVelocity;
+        } state_t;
+
+	    typedef enum orientation_selection_t : uint8_t
+        {
+	        INERTIAL_FRAME = 0,
+	        HEADING_FRAME = 1,
+	        VELOCITY_FRAME = 2
+        } orientation_selection_t;
+
+	    typedef enum status_t
+        {
+            SUCCESS = 0,
+            ITERATION_LIMIT_REACHED = 1,
+            INFEASIBLE = -2,
+            UNBOUNDED = -3
+        } status_t;
+
 	public:
 		MPC();
 		~MPC();
 
-		void Initialize();
+		void Reset();
 		void Step();
-};
+
+        void setPath(Path& path, const Eigen::Vector2d& origin, const Eigen::Vector2d& currentPosition);
+		void setVelocityBounds(double min_velocity, double max_velocity);
+		void setDesiredVelocity(double velocity);
+
+        double getWindowAngularVelocityX(void);
+        double getWindowAngularVelocityY(void);
+        double getWindowAngularVelocityZ(void);
+        Eigen::Vector2d getInertialAngularVelocity(void);
+
+		void setCurrentState(const Eigen::Vector2d& position, const Eigen::Vector2d& velocity, const boost::math::quaternion<double>& q);
+        void setControlLimits(double maxAngularVelocity, double maxAngle);
+        void setWeights(const Eigen::MatrixXd& W, const Eigen::MatrixXd& WN);
+
+        void setTrajectory(Trajectory& trajectory, const Eigen::Vector2d& position, const Eigen::Vector2d& velocity, const boost::math::quaternion<double>& q);
+        void ExtractWindowTrajectory(Trajectory& trajectory, Trajectory& extractedWindowTrajectory, const Eigen::Vector2d& position, const Eigen::Vector2d& velocity, const boost::math::quaternion<double>& q, double ExtractionDistance = 0, orientation_selection_t OrientationSelection = INERTIAL_FRAME);
+
+        void PlotPredictedTrajectory(cv::Mat& image);
+        void PlotRobot(cv::Mat& image, cv::Scalar color, bool drawXup, double x_min, double y_min, double x_max, double y_max);
+        Trajectory getPredictedTrajectory(void);
+        state_t getHorizonState(unsigned int horizonIndex = 1);
+
+        Trajectory getCurrentTrajectory(void);
+        Path getCurrentPath(void);
+		double getClosestPointOnPath(void);
+
+		double extractHeading(const boost::math::quaternion<double>& q);
+
+		double getSampleTime(void) const;
+
+    private:
+        void Initialize();
+        void initStates(void);
+        void setReferences(void);
+        void shiftStates(void);
+
+	private:
+        Trajectory currentTrajectory_;
+
+        double desiredVelocity_;
+        double minVelocity_;
+        double maxVelocity_;
+        double maxAngle_;
+        double maxAngularVelocity_;
+
+        Eigen::Vector3d controlBodyAngularVelocity_; // this is the computed output of the MPC
+
+        double WindowWidth_;
+        double WindowHeight_;
+        Eigen::Vector2d WindowOffset_;
+        double WindowOrientation_; // heading/yaw of the path window (in inertial frame)
+        Path windowPath_;
+        double windowPathLength_;
+        Eigen::Vector2d windowPathOrigin_; // origin of path in inertial frame - hence what (0,0) of path corresponds to in inertial coordinates
+        double closestPositionOnCurrentPath_; // this corresponds to the initialization value of the 's' parameter - however this is actually input as OnlineData instead
+		unsigned int pathApproximationOrder_;
+        orientation_selection_t WindowOrientationSelection_;
+
+		/* Both position and velocity is defined in inertial frame */
+        Eigen::Vector2d position_;
+        Eigen::Vector2d velocity_;
+		boost::math::quaternion<double> quaternion_;
+
+		/* Solver status and outputs */
+		status_t SolverStatus_;
+		double SolverKKT_;
+		double SolverCostValue_;
+		int SolverIterations_;
+    };
 	
 }
 	

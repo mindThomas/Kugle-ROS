@@ -298,10 +298,10 @@ b[7] = acadoWorkspace.rk_dim8_bPerm[7];
 
 /** Column vector of size: 1 */
 static const real_t acado_Ah_mat[ 1 ] = 
-{ 2.5000000000000001e-02 };
+{ 1.2500000000000001e-02 };
 
 
-/* Fixed step size:0.05 */
+/* Fixed step size:0.025 */
 int acado_integrate( real_t* const rk_eta, int resetIntegrator )
 {
 int error;
@@ -500,7 +500,7 @@ acadoWorkspace.rk_diffK[i + 7] = acadoWorkspace.rk_b[i * 8 + 7];
 for (i = 0; i < 8; ++i)
 {
 acadoWorkspace.rk_diffsNew2[(i * 11) + (run1)] = (i == run1-0);
-acadoWorkspace.rk_diffsNew2[(i * 11) + (run1)] += + acadoWorkspace.rk_diffK[i]*(real_t)5.0000000000000003e-02;
+acadoWorkspace.rk_diffsNew2[(i * 11) + (run1)] += + acadoWorkspace.rk_diffK[i]*(real_t)2.5000000000000001e-02;
 }
 }
 for (run1 = 0; run1 < 3; ++run1)
@@ -528,17 +528,17 @@ acadoWorkspace.rk_diffK[i + 7] = acadoWorkspace.rk_b[i * 8 + 7];
 }
 for (i = 0; i < 8; ++i)
 {
-acadoWorkspace.rk_diffsNew2[(i * 11) + (run1 + 8)] = + acadoWorkspace.rk_diffK[i]*(real_t)5.0000000000000003e-02;
+acadoWorkspace.rk_diffsNew2[(i * 11) + (run1 + 8)] = + acadoWorkspace.rk_diffK[i]*(real_t)2.5000000000000001e-02;
 }
 }
-rk_eta[0] += + acadoWorkspace.rk_kkk[0]*(real_t)5.0000000000000003e-02;
-rk_eta[1] += + acadoWorkspace.rk_kkk[1]*(real_t)5.0000000000000003e-02;
-rk_eta[2] += + acadoWorkspace.rk_kkk[2]*(real_t)5.0000000000000003e-02;
-rk_eta[3] += + acadoWorkspace.rk_kkk[3]*(real_t)5.0000000000000003e-02;
-rk_eta[4] += + acadoWorkspace.rk_kkk[4]*(real_t)5.0000000000000003e-02;
-rk_eta[5] += + acadoWorkspace.rk_kkk[5]*(real_t)5.0000000000000003e-02;
-rk_eta[6] += + acadoWorkspace.rk_kkk[6]*(real_t)5.0000000000000003e-02;
-rk_eta[7] += + acadoWorkspace.rk_kkk[7]*(real_t)5.0000000000000003e-02;
+rk_eta[0] += + acadoWorkspace.rk_kkk[0]*(real_t)2.5000000000000001e-02;
+rk_eta[1] += + acadoWorkspace.rk_kkk[1]*(real_t)2.5000000000000001e-02;
+rk_eta[2] += + acadoWorkspace.rk_kkk[2]*(real_t)2.5000000000000001e-02;
+rk_eta[3] += + acadoWorkspace.rk_kkk[3]*(real_t)2.5000000000000001e-02;
+rk_eta[4] += + acadoWorkspace.rk_kkk[4]*(real_t)2.5000000000000001e-02;
+rk_eta[5] += + acadoWorkspace.rk_kkk[5]*(real_t)2.5000000000000001e-02;
+rk_eta[6] += + acadoWorkspace.rk_kkk[6]*(real_t)2.5000000000000001e-02;
+rk_eta[7] += + acadoWorkspace.rk_kkk[7]*(real_t)2.5000000000000001e-02;
 if( run == 0 ) {
 for (i = 0; i < 8; ++i)
 {

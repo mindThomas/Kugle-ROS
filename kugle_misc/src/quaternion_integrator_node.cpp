@@ -30,17 +30,28 @@ void Quaternion_Integration_Body(tf::Quaternion &q, const double omega_body[3], 
 void Quaternion_Integration_Inertial(tf::Quaternion &q, const double omega_inertial[3], const double dt);
 
 double angularVelocityReference[3];
+bool angularVelocityReferenceInBody = true;
 ros::Time lastReferenceUpdateTime;
 
-void omegaCallback(const geometry_msgs::Twist::ConstPtr& msg)
+void omegaBodyCallback(const geometry_msgs::Twist::ConstPtr& msg)
 {
 	//ROS_INFO_STREAM("Angular velocity: (" << msg->angular.x << ", " << msg->angular.y << ", " << msg->angular.z << ")");
 	angularVelocityReference[0] = msg->angular.x;
 	angularVelocityReference[1] = msg->angular.y;
 	angularVelocityReference[2] = msg->angular.z;
+    angularVelocityReferenceInBody = true;
 	lastReferenceUpdateTime = ros::Time::now();
 }
 
+void omegaInertialCallback(const geometry_msgs::Twist::ConstPtr& msg)
+{
+    //ROS_INFO_STREAM("Angular velocity: (" << msg->angular.x << ", " << msg->angular.y << ", " << msg->angular.z << ")");
+    angularVelocityReference[0] = msg->angular.x;
+    angularVelocityReference[1] = msg->angular.y;
+    angularVelocityReference[2] = msg->angular.z;
+    angularVelocityReferenceInBody = false;
+    lastReferenceUpdateTime = ros::Time::now();
+}
 
 int main(int argc, char **argv) {
 	std::string nodeName = "quaternion_integrator";
@@ -49,14 +60,24 @@ int main(int argc, char **argv) {
 	ros::NodeHandle nParam("~"); // private node handle
 
 	// Configure angular velocity topic to subscribe to
-	std::string omega_topic;
-	if (!nParam.getParam("omega_topic", omega_topic)) {
-		omega_topic = "cmd_omega";
-		ROS_WARN_STREAM("[" << nodeName << "] omega_topic not set. Defaults to: " << omega_topic);
+	std::string angular_velocity_body_topic;
+	if (!nParam.getParam("angular_velocity_body_topic", angular_velocity_body_topic)) {
+		angular_velocity_body_topic = "cmd_vel_angular";
+		ROS_WARN_STREAM("[" << nodeName << "] angular_velocity_body_topic not set. Defaults to: " << angular_velocity_body_topic);
 	}
 	// Alternative is
 	//nParam.param("omega_topic", omega_topic, std::string("cmd_omega"));
-	ros::Subscriber sub = n.subscribe(omega_topic, 1000, omegaCallback);
+	ros::Subscriber sub_body = n.subscribe(angular_velocity_body_topic, 1000, omegaBodyCallback);
+
+	// Configure angular velocity topic to subscribe to
+	std::string angular_velocity_inertial_topic;
+	if (!nParam.getParam("angular_velocity_inertial_topic", angular_velocity_inertial_topic)) {
+        angular_velocity_inertial_topic = "cmd_vel_angular_inertial";
+		ROS_WARN_STREAM("[" << nodeName << "] angular_velocity_inertial_topic not set. Defaults to: " << angular_velocity_inertial_topic);
+	}
+	// Alternative is
+	//nParam.param("omega_topic", omega_topic, std::string("cmd_omega"));
+	ros::Subscriber sub_inertial = n.subscribe(angular_velocity_inertial_topic, 1000, omegaInertialCallback);
 
 	// Configure quaternion topic to publish to
 	std::string quaternion_topic;
@@ -106,7 +127,11 @@ int main(int argc, char **argv) {
             mat.getEulerYPR(yaw, pitch, roll);
             quaternion.setRPY(0,0,yaw); // reset to only current heading
 		}
-		Quaternion_Integration_Body(quaternion, angularVelocityReference, dt);
+
+		if (angularVelocityReferenceInBody)
+		    Quaternion_Integration_Body(quaternion, angularVelocityReference, dt);
+		else
+            Quaternion_Integration_Body(quaternion, angularVelocityReference, dt);
 
         geometry_msgs::Quaternion pubQuaternion;
         quaternionTFToMsg(quaternion, pubQuaternion);

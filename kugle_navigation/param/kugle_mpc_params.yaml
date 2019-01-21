@@ -3,8 +3,9 @@ KugleMPC:
   map_frame: map
   mpc_frame: odom  # the predicted path is planned in this frame, since it is based on the current position of the robot
   heading_frame: heading
+  base_link_frame: base_link
 
-  width: 4.0   # suggestion; make this the same size as the local_costmap
-  height: 6.0
+  width: 5.0   # suggestion; make this the same size as the local_costmap
+  height: 5.0
 
   max_vel: 1.0
