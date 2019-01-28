@@ -41,6 +41,11 @@ namespace MPC
         return sqrt( (point[0]-other.point[0])*(point[0]-other.point[0]) + (point[1]-other.point[1])*(point[1]-other.point[1]) );
     }
 
+    double TrajectoryPoint::EuclideanDistance(const Eigen::Vector2d& other)
+    {
+        return sqrt( (point[0]-other[0])*(point[0]-other[0]) + (point[1]-other[1])*(point[1]-other[1]) );
+    }
+
     Trajectory::Trajectory() : lastSeq_(-1), sorted_(false)
     {
 
@@ -88,21 +93,21 @@ namespace MPC
         sorted_ = false;
     }
 
-    void Trajectory::AddPoint(Eigen::Vector2d point, double heading, double velocity)
+    void Trajectory::AddPoint(Eigen::Vector2d point, bool goal, double heading, double velocity)
     {
-        points_.push_back(TrajectoryPoint(++lastSeq_, point[0], point[1], heading, velocity));
+        points_.push_back(TrajectoryPoint(++lastSeq_, point[0], point[1], goal, heading, velocity));
         sorted_ = false;
     }
 
-    void Trajectory::AddPoint(double x, double y, double heading, double velocity)
+    void Trajectory::AddPoint(double x, double y, bool goal, double heading, double velocity)
     {
-        points_.push_back(TrajectoryPoint(++lastSeq_, x, y, heading, velocity));
+        points_.push_back(TrajectoryPoint(++lastSeq_, x, y, goal, heading, velocity));
         sorted_ = false;
     }
 
-    void Trajectory::AddPoint(int seq, double x, double y, double heading, double velocity)
+    void Trajectory::AddPoint(int seq, double x, double y, bool goal, double heading, double velocity)
     {
-        points_.push_back(TrajectoryPoint(seq, x, y, heading, velocity));
+        points_.push_back(TrajectoryPoint(seq, x, y, goal, heading, velocity));
         if (seq > lastSeq_) lastSeq_ = seq;
         sorted_ = false;
     }
@@ -110,6 +115,7 @@ namespace MPC
     void Trajectory::clear()
     {
         points_.clear();
+        lastSeq_ = -1;
         sorted_ = false;
     }
 
@@ -125,7 +131,7 @@ namespace MPC
         Eigen::Matrix2d rot = Eigen::Rotation2Dd(angle).toRotationMatrix();
 
         for (auto& p : points_) {
-            rotatedTrajectory.AddPoint(rot*p.point, p.heading, p.velocity);
+            rotatedTrajectory.AddPoint(rot*p.point, p.goal, p.heading, p.velocity);
         }
     }
 
@@ -164,7 +170,7 @@ namespace MPC
         movedTrajectory.clear();
 
         for (auto& p : points_) {
-            movedTrajectory.AddPoint(p.point += offset, p.heading, p.velocity);
+            movedTrajectory.AddPoint(p.point += offset, p.goal, p.heading, p.velocity);
         }
         movedTrajectory.sorted_ = sorted_;
     }
@@ -255,6 +261,16 @@ namespace MPC
         return find(seq, foundPoint);
     }
 
+    bool Trajectory::includesGoal()
+    {
+        // Check whether the current trajectory includes a goal point
+        for (auto& p : points_) {
+            if (p.goal)
+                return true;
+        }
+        return false;
+    }
+
     void Trajectory::print()
     {
         std::cout << "Trajectory points:" << std::endl;
@@ -329,6 +345,18 @@ namespace MPC
             yValues.push_back(p.point[1]);
         }
         return yValues;
+    }
+
+    TrajectoryPoint Trajectory::get(unsigned int index)
+    {
+        TrajectoryPoint emptyPoint;
+        if (index < 0 || index >= points_.size()) return emptyPoint;
+        return points_.at(index);
+    }
+
+    TrajectoryPoint Trajectory::back()
+    {
+        return points_.back();
     }
 
     void Trajectory::plot(cv::Mat& image, cv::Scalar color, bool drawXup, bool plotText, double x_min, double y_min, double x_max, double y_max)
@@ -422,19 +450,19 @@ namespace MPC
     {
         Trajectory trajectory;
 
-        double r = 10;
+        double r = 20;
 
         Eigen::Vector2d p;
         for (unsigned int i = 0; i < (100+50+100+50-1); i++) {
-            if (i < 100) { //  straight x=10, y=-50...50
-                p << 10, (double(i) - 50);
+            if (i < 100) { //  straight x=20, y=-50...50
+                p << 20, (double(i) - 50);
             } else if (i < 100+50) { // left turn 180 degree with radius, r
-                p << (10 - r), 50;
+                p << (20 - r), 50;
                 p += r * Eigen::Vector2d(cos(M_PI / 50 * (double(i) - 100)), sin(M_PI / 50 * (double(i) - 100)));
-            } else if (i < 100+50+100) { // straight x=-10, y=50...-50
-                p << -10, (50 - (double(i) - 100 - 50));
+            } else if (i < 100+50+100) { // straight x=-20, y=50...-50
+                p << -20, (50 - (double(i) - 100 - 50));
             } else if (i < 100+50+100+50) { // left turn 180 degree with radius, r
-                p << 10 - r, -50;
+                p << 20 - r, -50;
                 p += r * Eigen::Vector2d(cos(M_PI / 50 * (double(i) - 100 - 50 - 100 + 50)),
                                          sin(M_PI / 50 * (double(i) - 100 - 50 - 100 + 50)));
             } else {
@@ -466,6 +494,8 @@ namespace MPC
             }*/
 
             // Find the element at which the jump happens closest to the end point
+
+
             int prevSeqID = points_.at(0).seq;
             int jumpIndex = 0;
             for (int i = 0; i < points_.size(); i++) {
@@ -474,6 +504,11 @@ namespace MPC
                     jumpIndex = i;
                 }
                 prevSeqID = points_[i].seq;
+            }
+
+            if (jumpIndex == 0) { // there is no need for begin/end reordering, since the start and end indices are not both within the trajectory
+                correctedTrajectory = *this;
+                return;
             }
 
             // Now create a corrected trajectory where the sequence order is fixed
@@ -544,12 +579,51 @@ namespace MPC
         }
 
         if (startIndex < 0) startIndex = 0;
-        if (endIndex >= points_.size()) endIndex = points_.size()-1;
-
-        // Extract the continuous sequence trajectory
-        continuousSequenceTrajectory.clear();
-        for (int i = startIndex; i <= endIndex; i++) {
-            continuousSequenceTrajectory.AddPoint(points_[i]);
+        if (endIndex >= (points_.size()-1) && includesGoal()) { // if the trajectory includes goal, then the index will likely be equal to the size of the trajectory (end item)
+            endIndex = points_.size()-1;
         }
+
+        if (endIndex < (points_.size()-1) || (endIndex == (points_.size()-1) && includesGoal())) {
+            // Extract the continuous sequence trajectory
+            continuousSequenceTrajectory.clear();
+            for (int i = startIndex; i <= endIndex; i++) {
+                continuousSequenceTrajectory.AddPoint(points_[i]);
+            }
+        }
+        else { // endIndex equal to the last point but goal is not set, hence this is likely due to looping
+            // Extract the continuous sequence trajectory from closest point to end item of trajectory
+            endIndex = points_.size()-1;
+            continuousSequenceTrajectory.clear();
+            for (int i = startIndex; i <= endIndex; i++) {
+                continuousSequenceTrajectory.AddPoint(points_[i]);
+            }
+            int endSeqID = points_[endIndex].seq;
+            // Add points from the beginning until first jump
+            for (int i = jumpIndex[0]; i < jumpIndex[1]; i++) {
+                TrajectoryPoint pTmp = points_[i];
+                pTmp.seq += endSeqID + 1; // make the ending sequence part of the trajectory have greater sequence ID's such that the whole trajectory sequence becomes a series of continuous ID's
+                continuousSequenceTrajectory.AddPoint(pTmp);
+            }
+        }
+    }
+
+    TrajectoryPoint Trajectory::FindClosestPoint(Eigen::Vector2d position)
+    {
+        // Find point in trajectory being closest to input position
+        TrajectoryPoint pos(-1, position[0], position[1]);
+        double smallestDistance = std::numeric_limits<double>::infinity();
+        int smallestDistanceIndex = 0;
+
+        if (points_.size() == 0) return pos;
+
+        for (int i = 0; i < points_.size(); i++) {
+            double distance = points_[i].EuclideanDistance(pos);
+            if (distance < smallestDistance) {
+                smallestDistanceIndex = i;
+                smallestDistance = distance;
+            }
+        }
+
+        return points_.at(smallestDistanceIndex);
     }
 }

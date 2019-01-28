@@ -7,7 +7,8 @@
 	<arg name="base_frame_id"   default="heading"/>
 	<arg name="global_frame_id" default="map"/>
   	<arg name="odom_topic" default="/odom" />
-	<arg name="cmd_vel_topic" default="/cmd_vel_angular_inertial" />
+	<arg name="cmd_vel_topic" default="/cmd_vel" />
+	<arg name="cmd_vel_angular_topic" default="/cmd_vel_angular_inertial" />
 	<arg name="left_laser_topic" default="/laser/left/scan" />
 	<arg name="right_laser_topic" default="/laser/right/scan" />
 	<arg name="initial_pose_x" default="0.0"/>
@@ -39,6 +40,7 @@
 		<param name="KugleMPC/heading_frame" value="$(arg heading_frame_id)"/>
 		<param name="KugleMPC/base_link_frame" value="$(arg base_link_frame_id)"/>
 		<remap from="KugleMPC/odom" to="$(arg odom_topic)"/>
+		<remap from="KugleMPC/cmd_vel_angular" to="$(arg cmd_vel_angular_topic)"/>
 
 		<param name="base_local_planner" value="kugle_mpc/KugleMPC"/>
 

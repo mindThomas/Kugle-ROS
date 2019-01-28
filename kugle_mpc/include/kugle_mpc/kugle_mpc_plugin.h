@@ -8,6 +8,12 @@
 #include <geometry_msgs/Twist.h>
 #include <nav_msgs/Odometry.h>
 
+#include <mutex>
+#include <condition_variable>
+
+#include <sys/stat.h>
+#include <sys/time.h>
+
 #include "MPC.h"
 #include "Trajectory.h"
 #include "Path.h"
@@ -15,6 +21,7 @@
 class KugleMPC : public nav_core::BaseLocalPlanner {
 	public:
 		KugleMPC();
+		~KugleMPC();
 		//TestPlanner(std::string name, costmap_2d::Costmap2DROS* costmap_ros);
 
 		/** overridden classes from interface nav_core::BaseGlobalPlanner **/
@@ -26,6 +33,12 @@ class KugleMPC : public nav_core::BaseLocalPlanner {
 	private:
 		void OdometryCallback(const nav_msgs::Odometry::ConstPtr& msg);
         void PublishPredictedTrajectory();
+        void PublishAngularVelocityControl();
+        void MPC_Thread();
+        void AngularVelocityPublisherThread();
+
+        void tic();
+        double toc();
 
 	private:
 		tf::TransformListener * tfListener_;
@@ -42,6 +55,7 @@ class KugleMPC : public nav_core::BaseLocalPlanner {
 
 		ros::Publisher pub_global_plan_;
         ros::Publisher pub_local_plan_;
+		ros::Publisher pub_cmd_vel_angular_;
 		ros::Subscriber sub_odom_;
 
 		geometry_msgs::Quaternion currentAttitude_;
@@ -49,16 +63,29 @@ class KugleMPC : public nav_core::BaseLocalPlanner {
 		ros::Time odomTime_;
 
 		bool global_plan_changed_;
+		unsigned int global_plan_size_;
         MPC::Trajectory global_plan_;
+        std::mutex global_plan_mutex_;
+        MPC::TrajectoryPoint goal_point_;
         MPC::Trajectory local_plan_;
         MPC::Path local_path_;
 
         ros::Time prevTime_;
         MPC::MPC mpc_;
+        boost::thread mpcThread_;
+        boost::thread publisherThread_;
+        bool stopThread_;
+        bool goal_reached_;
 
-		// Test only
-        ros::Time tg;
-        unsigned int old_size;
+        std::mutex mpc_signalling_mutex_;
+        std::timed_mutex mpc_processing_mutex_;
+        std::condition_variable mpc_signalling_cv;
+
+		std::vector<std::pair<double,double>> angularVelocityOutputs_;
+        std::mutex angularVelocityOutputs_mutex_;
+        Eigen::Vector2d appliedAngularVelocityReference_;
+
+        struct timeval timing_start_;
 };
 
 #endif

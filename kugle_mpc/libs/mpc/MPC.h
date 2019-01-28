@@ -27,6 +27,7 @@
 
 #include <stdlib.h>
 #include <limits>
+#include <vector>
 
 #include "acado_common.h"
 #include "acado_indices.h"
@@ -49,71 +50,49 @@ namespace MPC {
 
     static float inf = std::numeric_limits<float>::infinity();
 
+class Obstacle
+{
+    public:
+        double x;
+        double y;
+        double radius;
+
+        Obstacle() : x(999), y(999), radius(0.01) {}; // neglible obstacle
+        Obstacle(double x_, double y_, double radius_) : x(x_), y(y_), radius(radius_) {};
+
+        double proximity(const Eigen::Vector2d& position) const
+        {
+            return sqrt( (x-position[0])*(x-position[0]) + (y-position[1])*(y-position[1]) ) - radius;
+        }
+
+        /* Operator used for sorting */
+        static bool proximitySorting(const Eigen::Vector2d& position, const Obstacle& obstacle1, const Obstacle& obstacle2)
+        {
+            return (obstacle1.proximity(position) < obstacle2.proximity(position));
+        }
+};
+
 class MPC
 {
 	public:
 		static const unsigned int HorizonLength = ACADO_N;		// 'WNmat' needs to be a double matrix of size [ACADO_NY x ACADO_NY]
+        static constexpr double RobotRadius = 0.1; // radius of robot in meters
+
+		// Weight definitions
+        static const double WPathFollow;
+        static const double WVelocity;
+        static const double WSmoothness;
+        static const double Wdiag[ACADO_NY]; // Horizon weight matrix (cost)
+        static const double WNdiag[ACADO_NYN]; // Final state weight matrix (cost)
 
 	private:
 		static ACADO_t& ACADO;
-		static const unsigned int num_StateVariables = ACADO_NX;	// 'xInit' needs to be a double vector of size [ACADO_NX x 1]
-		static const unsigned int num_Inputs = ACADO_NU;		// 'uInit' needs to be a double vector of size [ACADO_NU x 1]		
-		static const unsigned int num_Outputs = ACADO_NY;		// 'Wmat' needs to be a double matrix of size [ACADO_NY x ACADO_NY]
-		static const unsigned int num_FinalOutputs = ACADO_NYN;		// 'WNmat' needs to be a double matrix of size [ACADO_NYN x ACADO_NYN]
-		static const unsigned int num_OnlineData = ACADO_NOD;		// 'odInit' needs to be a double matrix of size [ACADO_N+1 x ACADO_NOD]
-										// 'refInit' needs to be a double matrix of size [ACADO_N+1 x ACADO_NY]
-
-#if 0
-	/* ACADO Variables overview */
-	acadoVariables.x[ACADO_N + 1, ACADO_NX]
-	acadoVariables.u[ACADO_N, ACADO_NU]
-	#if ACADO_NXA	
-	acadoVariables.z[ACADO_N, ACADO_NXA]
-	#endif // ACADO_NXA	
-	#if ACADO_NOD
-	acadoVariables.od[ACADO_N + 1, ACADO_NOD]
-	#endif // ACADO_NOD
-	acadoVariables.y[ACADO_N, ACADO_NY]	
-	#if ACADO_NYN
-	acadoVariables.yN[1, ACADO_NYN]
-	#endif // ACADO_NYN
-	#if ACADO_INITIAL_STATE_FIXED
-	acadoVariables.x0[1, ACADO_NX]
-	#endif // ACADO_INITIAL_STATE_FIXED
-
-	#if ACADO_WEIGHTING_MATRICES_TYPE == 1
-	acadoVariables.W[ACADO_NY, ACADO_NY]
-	acadoVariables.WN[ACADO_NYN, ACADO_NYN]
-	#elif ACADO_WEIGHTING_MATRICES_TYPE == 2
-	acadoVariables.W[ACADO_N * ACADO_NY, ACADO_NY]
-	acadoVariables.WN[ACADO_NYN, ACADO_NYN]
-	#endif // ACADO_WEIGHTING_MATRICES_TYPE
-
-	#if ACADO_USE_LINEAR_TERMS == 1
-	#if ACADO_WEIGHTING_MATRICES_TYPE == 1
-	acadoVariables.Wlx[ACADO_NX, 1]
-	acadoVariables.Wlu[ACADO_NU, 1]
-	#elif ACADO_WEIGHTING_MATRICES_TYPE == 2
-	acadoVariables.Wlx[(ACADO_N+1) * ACADO_NX, 1]
-	acadoVariables.Wlu[ACADO_N * ACADO_NU, 1]
-	#endif // ACADO_WEIGHTING_MATRICES_TYPE
-	#endif // ACADO_USE_LINEAR_TERMS
-
-	/* Bounds - only if they are not hardcoded (ACADO_HARDCODED_CONSTRAINT_VALUES == 0) */
-	#if ACADO_INITIAL_STATE_FIXED == 1
-	acadoVariables.lbValues[ACADO_N * ACADO_NU, 1]
-	acadoVariables.ubValues[ACADO_N * ACADO_NU, 1]
-	#else
-	acadoVariables.lbValues[ACADO_NX + ACADO_N * ACADO_NU, 1]
-	acadoVariables.ubValues[ACADO_NX + ACADO_N * ACADO_NU, 1]
-	#endif /* ACADO_INITIAL_STATE_FIXED == 0 */
-
-	#if ACADO_USE_ARRIVAL_COST == 1
-	acadoVariables.xAC[ACADO_NX, 1]
-	acadoVariables.SAC[ACADO_NX, ACADO_NX]
-	acadoVariables.WL[ACADO_NX, ACADO_NX]
-	#endif
-#endif
+		static constexpr unsigned int num_StateVariables = ACADO_NX;	// 'xInit' needs to be a double vector of size [ACADO_NX x 1]
+		static constexpr unsigned int num_Inputs = ACADO_NU;		    // 'uInit' needs to be a double vector of size [ACADO_NU x 1]
+		static constexpr unsigned int num_Outputs = ACADO_NY;		    // 'Wmat' needs to be a double matrix of size [ACADO_NY x ACADO_NY]
+		static constexpr unsigned int num_FinalOutputs = ACADO_NYN;		// 'WNmat' needs to be a double matrix of size [ACADO_NYN x ACADO_NYN]
+		static constexpr unsigned int num_OnlineData = ACADO_NOD;		// 'odInit' needs to be a double matrix of size [ACADO_N+1 x ACADO_NOD]
+                                                                        // 'refInit' needs to be a double matrix of size [ACADO_N+1 x ACADO_NY]
 
     public:
         typedef struct state_t
@@ -121,6 +100,7 @@ class MPC
             boost::math::quaternion<double> quaternion;
             Eigen::Vector2d position;
             Eigen::Vector2d velocity;
+            double pathDistance;
             double pathVelocity;
         } state_t;
 
@@ -136,7 +116,8 @@ class MPC
             SUCCESS = 0,
             ITERATION_LIMIT_REACHED = 1,
             INFEASIBLE = -2,
-            UNBOUNDED = -3
+            UNBOUNDED = -3,
+			OTHER = -1
         } status_t;
 
 	public:
@@ -147,6 +128,8 @@ class MPC
 		void Step();
 
         void setPath(Path& path, const Eigen::Vector2d& origin, const Eigen::Vector2d& currentPosition);
+        void setXYreferencePosition(double x, double y);
+        void setObstacles(std::vector<Obstacle>& obstacles);
 		void setVelocityBounds(double min_velocity, double max_velocity);
 		void setDesiredVelocity(double velocity);
 
@@ -154,18 +137,23 @@ class MPC
         double getWindowAngularVelocityY(void);
         double getWindowAngularVelocityZ(void);
         Eigen::Vector2d getInertialAngularVelocity(void);
+        std::vector<std::pair<double,double>> getInertialAngularVelocityHorizon(void);
 
 		void setCurrentState(const Eigen::Vector2d& position, const Eigen::Vector2d& velocity, const boost::math::quaternion<double>& q);
         void setControlLimits(double maxAngularVelocity, double maxAngle);
         void setWeights(const Eigen::MatrixXd& W, const Eigen::MatrixXd& WN);
 
         void setTrajectory(Trajectory& trajectory, const Eigen::Vector2d& position, const Eigen::Vector2d& velocity, const boost::math::quaternion<double>& q);
-        void ExtractWindowTrajectory(Trajectory& trajectory, Trajectory& extractedWindowTrajectory, const Eigen::Vector2d& position, const Eigen::Vector2d& velocity, const boost::math::quaternion<double>& q, double ExtractionDistance = 0, orientation_selection_t OrientationSelection = INERTIAL_FRAME);
+        void ExtractWindowTrajectory(Trajectory& trajectory, Trajectory& extractedWindowTrajectory, const Eigen::Vector2d& position, const Eigen::Vector2d& velocity, const boost::math::quaternion<double>& q, double ExtractionDistance = 0, bool DoWindowFilteringBeforeExtractionDistance = false, orientation_selection_t OrientationSelection = INERTIAL_FRAME);
 
-        void PlotPredictedTrajectory(cv::Mat& image);
+        void PlotPredictedTrajectory(cv::Mat& image, double x_min, double y_min, double x_max, double y_max);
         void PlotRobot(cv::Mat& image, cv::Scalar color, bool drawXup, double x_min, double y_min, double x_max, double y_max);
+        void PlotRobotInWindow(cv::Mat& image, cv::Scalar color, bool drawXup, double x_min, double y_min, double x_max, double y_max);
+        void PlotObstacles(cv::Mat& image, cv::Scalar color, bool drawXup, double x_min, double y_min, double x_max, double y_max);
+        void PlotObstaclesInWindow(cv::Mat& image, cv::Scalar color, bool drawXup, double x_min, double y_min, double x_max, double y_max);
         Trajectory getPredictedTrajectory(void);
         state_t getHorizonState(unsigned int horizonIndex = 1);
+        double getHorizonPathLength() const;
 
         Trajectory getCurrentTrajectory(void);
         Path getCurrentPath(void);
@@ -173,16 +161,20 @@ class MPC
 
 		double extractHeading(const boost::math::quaternion<double>& q);
 
-		double getSampleTime(void) const;
+		double getSampleTime() const;
+		double getSolveTime() const;
+        double getCurrentPathPosition() const;
+        status_t getStatus() const;
 
     private:
-        void Initialize();
-        void initStates(void);
+        void resetACADO();
+        void resetStates(void);
         void setReferences(void);
         void shiftStates(void);
 
 	private:
         Trajectory currentTrajectory_;
+        std::vector<Obstacle> currentObstacles_;
 
         double desiredVelocity_;
         double minVelocity_;
@@ -199,7 +191,7 @@ class MPC
         Path windowPath_;
         double windowPathLength_;
         Eigen::Vector2d windowPathOrigin_; // origin of path in inertial frame - hence what (0,0) of path corresponds to in inertial coordinates
-        double closestPositionOnCurrentPath_; // this corresponds to the initialization value of the 's' parameter - however this is actually input as OnlineData instead
+        double closestPositionOnCurrentPathToOrigin_; // this corresponds to the initialization value of the 's' parameter - however this is actually input as OnlineData instead
 		unsigned int pathApproximationOrder_;
         orientation_selection_t WindowOrientationSelection_;
 
@@ -213,6 +205,7 @@ class MPC
 		double SolverKKT_;
 		double SolverCostValue_;
 		int SolverIterations_;
+		double SolveTime_;
     };
 	
 }

@@ -47,7 +47,7 @@ namespace MPC
             Polynomial();
             Polynomial(const Polynomial& poly);
             Polynomial(unsigned int order);
-            Polynomial(std::vector<double>& coeffs);
+            Polynomial(std::vector<double> coeffs);
             Polynomial(const double * coeffs, int num_coeffs);
             ~Polynomial();
 
@@ -85,7 +85,7 @@ namespace MPC
         public:
             Path();
             Path(Polynomial& poly_x, Polynomial& poly_y, double s_end = -1);
-            Path(Trajectory& trajectory, unsigned int approximationOrder = 6, bool EnforceBeginEndConstraint = true, bool EnforceBeginEndAngleConstraint = true);
+            Path(Trajectory& trajectory, unsigned int approximationOrder = 6, bool StopAtEnd = false, bool EnforceBeginEndConstraint = true, bool EnforceBeginEndAngleConstraint = true);
             ~Path();
 
             Path& operator=(const Path& other);
@@ -112,7 +112,7 @@ namespace MPC
         private:
             double ArcCurveLength(double t);
             double ApproximateArcCurveLength(double t, double discretizationStepSize = 0.0001);
-            void FitTrajectory(Trajectory& trajectory, unsigned int approximationOrder = 6, bool EnforceBeginEndConstraint = true, bool EnforceBeginEndAngleConstraint = true);
+            void FitTrajectory(Trajectory& trajectory, unsigned int approximationOrder = 6, bool StopAtEnd = false, bool EnforceBeginEndConstraint = true, bool EnforceBeginEndAngleConstraint = true);
 
         private:
             /* The path polynomials should be parameterized by arc curve length, s ! */

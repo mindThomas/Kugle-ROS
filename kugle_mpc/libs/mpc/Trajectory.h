@@ -45,12 +45,14 @@ namespace MPC
 	    public:
             int seq; // sequence number
             Eigen::Vector2d point;
+            bool goal; // is this point the goal/final point - hence the robot should stop here
             double heading;
             double velocity;
 
-            TrajectoryPoint() : seq(-1), point(std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity()), heading(std::numeric_limits<double>::infinity()), velocity(std::numeric_limits<double>::infinity()) {} // uninitialized point
-            TrajectoryPoint(int seq_, double _x, double _y, double _heading = -1, double _velocity = -1) : seq(seq_), point(_x, _y), heading(_heading), velocity(_velocity) {}
+            TrajectoryPoint() : seq(-1), point(std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity()), goal(false), heading(std::numeric_limits<double>::infinity()), velocity(std::numeric_limits<double>::infinity()) {}; // uninitialized point
+            TrajectoryPoint(int seq_, double _x, double _y, bool goal = false, double _heading = -1, double _velocity = -1) : seq(seq_), point(_x, _y), goal(goal), heading(_heading), velocity(_velocity) {};
             double EuclideanDistance(const TrajectoryPoint& other);
+            double EuclideanDistance(const  Eigen::Vector2d& other);
 
             /* Operator used for sorting */
             bool operator < (const TrajectoryPoint& p) const
@@ -70,9 +72,9 @@ namespace MPC
             Trajectory& operator=(const Trajectory& other);
 
 			void AddPoint(TrajectoryPoint& point);
-            void AddPoint(Eigen::Vector2d point, double heading = -1, double velocity = -1);
-			void AddPoint(double x, double y, double heading = -1, double velocity = -1);
-            void AddPoint(int seq, double x, double y, double heading = -1, double velocity = -1);
+            void AddPoint(Eigen::Vector2d point, bool goal = false, double heading = -1, double velocity = -1);
+			void AddPoint(double x, double y, bool goal = false, double heading = -1, double velocity = -1);
+            void AddPoint(int seq, double x, double y, bool goal = false, double heading = -1, double velocity = -1);
             void clear();
 			size_t size();
 
@@ -93,16 +95,20 @@ namespace MPC
 			bool find(int seq);
             void sort();
             double distance();
+            bool includesGoal();
             int GetLastSequenceID();
             std::vector<double> GetDistanceList();
 			std::vector<double> GetX();
 			std::vector<double> GetY();
+            TrajectoryPoint get(unsigned int index);
+            TrajectoryPoint back();
 
             void FixSequenceOrder(Trajectory& correctedTrajectory, int startSeqID, int endSeqID);
             void ExtractContinuousClosestSequence(Trajectory& continuousSequenceTrajectory, Eigen::Vector2d position = Eigen::Vector2d(0,0));
+			TrajectoryPoint FindClosestPoint(Eigen::Vector2d position);
 
-            void plot(bool drawXup = false, bool plotText = true, double x_min = -2.5, double y_min = -2.5, double x_max = 2.5, double y_max = 2.5);
-            void plot(cv::Mat& image, cv::Scalar color, bool drawXup = false, bool plotText = true, double x_min = -2.5, double y_min = -2.5, double x_max = 2.5, double y_max = 2.5);
+            void plot(bool drawXup = false, bool plotText = true, double x_min = -4, double y_min = -4, double x_max = 4, double y_max = 4);
+            void plot(cv::Mat& image, cv::Scalar color, bool drawXup = false, bool plotText = true, double x_min = -4, double y_min = -4, double x_max = 4, double y_max = 4);
 
 	    public:
 	        static Trajectory GenerateTestTrajectory(void);

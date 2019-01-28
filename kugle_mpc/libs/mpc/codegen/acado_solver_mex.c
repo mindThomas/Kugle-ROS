@@ -376,6 +376,11 @@ void mexFunction(	int nlhs,
     getArray(1, src, 0, "WL",  acadoVariables.WL,  ACADO_NX, ACADO_NX);
 #endif
 
+#if ACADO_USE_LINEAR_TERMS == 1
+	getArray(1, src, 0, "Wlx", acadoVariables.Wlx, ACADO_NX, 1);
+	getArray(1, src, 0, "Wlu", acadoVariables.Wlu, ACADO_NU, 1);
+#endif
+
 	/* Shifting strategy */
 	shPtr = mxGetField(src, 0, "shifting");
 	if (shPtr != NULL)

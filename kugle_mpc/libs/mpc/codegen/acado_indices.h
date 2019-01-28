@@ -36,24 +36,29 @@ typedef struct x_t
 	real_t dy;
 	real_t s;
 	real_t ds;
+	real_t omega_ref_x;
+	real_t omega_ref_y;
 } x_t __attribute__((packed));
 
 typedef struct u_t
 {
-    real_t omega_ref_x;
-    real_t omega_ref_y;
-    real_t s_acceleration;
+    real_t domega_ref_x;
+    real_t domega_ref_y;
+    real_t dds;
+	real_t velocity_slack;
+	real_t proximity_slack;
 } u_t __attribute__((packed));
 
 typedef struct od_t
 {
     real_t desiredVelocity;
+	real_t maxVelocity;
     real_t maxAngle;
     real_t maxOmegaRef;
-    real_t minVelocity;
-    real_t maxVelocity;
     real_t trajectoryLength;
     real_t trajectoryStart;
+	real_t cx9;
+	real_t cx8;
     real_t cx7;
     real_t cx6;
     real_t cx5;
@@ -62,6 +67,8 @@ typedef struct od_t
     real_t cx2;
     real_t cx1;
     real_t cx0;
+	real_t cy9;
+	real_t cy8;
     real_t cy7;
     real_t cy6;
     real_t cy5;
@@ -70,22 +77,49 @@ typedef struct od_t
     real_t cy2;
     real_t cy1;
     real_t cy0;
+	real_t obs1_x;
+	real_t obs1_y;
+	real_t obs1_r;
+	real_t obs2_x;
+	real_t obs2_y;
+	real_t obs2_r;
+	real_t obs3_x;
+	real_t obs3_y;
+	real_t obs3_r;
+	real_t obs4_x;
+	real_t obs4_y;
+	real_t obs4_r;
+	real_t obs5_x;
+	real_t obs5_y;
+	real_t obs5_r;
 } od_t __attribute__((packed));
 
 typedef struct y_t
 {
     real_t x_err;
     real_t y_err;
-    real_t ds_err;
-    real_t omega_ref_x; // this is the output, hence punishment of control output
-    real_t omega_ref_y; // this is the output, hence punishment of control output
+    real_t q2;
+	real_t q3;
+    real_t omega_ref_x;
+    real_t omega_ref_y;
+    real_t velocity_matching;
+    real_t velocity_error;
+    real_t domega_ref_x;  // this is the output, hence punishment of control output
+	real_t domega_ref_y;  // this is the output, hence punishment of control output
+	real_t velocity_slack;
+	real_t proximity_slack;
 } y_t __attribute__((packed));
 
 typedef struct yN_t
 {
-    real_t x_err;
-    real_t y_err;
-    real_t ds_err;
+	real_t x_err;
+	real_t y_err;
+	real_t q2;
+	real_t q3;
+	real_t omega_ref_x;
+	real_t omega_ref_y;
+	real_t velocity_matching;
+	real_t velocity_error;
 } yN_t __attribute__((packed));
 
 

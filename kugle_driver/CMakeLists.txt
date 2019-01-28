@@ -71,7 +71,7 @@ catkin_package(
   INCLUDE_DIRS include
   LIBRARIES lspc
   CATKIN_DEPENDS roscpp std_msgs geometry_msgs sensor_msgs nav_msgs tf dynamic_reconfigure kugle_msgs kugle_srvs
-  DEPENDS
+  DEPENDS Boost
 )
 
 ###########
