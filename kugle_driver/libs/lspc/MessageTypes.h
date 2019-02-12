@@ -28,16 +28,15 @@ namespace lspc
 		typedef enum: uint8_t
 		{
 			EnableLogOutput = 0x01,
-			EnableRawSensorOutput
+			EnableRawSensorOutput,
+			UseFilteredIMUinRawSensorOutput
 		} debug_t;
 
 		typedef enum: uint8_t
 		{
 			IndependentHeading = 0x01,
 			YawVelocityBraking,
-			StepTestEnabled,
-			VelocityControllerEnabled,
-			JoystickVelocityControl
+			StepTestEnabled
 		} behavioural_t;
 
 		typedef enum: uint8_t
