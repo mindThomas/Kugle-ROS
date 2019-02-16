@@ -66,6 +66,7 @@
 #include <kugle_srvs/CalibrateIMU.h>
 #include <kugle_srvs/Reboot.h>
 #include <kugle_srvs/EnterBootloader.h>
+#include <kugle_srvs/RestartController.h>
 
 /* Include generated Message Types */
 #include <kugle_msgs/ControllerInfo.h>
@@ -78,6 +79,7 @@ Queue<std::shared_ptr<std::vector<uint8_t>>> GetParameterResponse;
 Queue<std::shared_ptr<std::vector<uint8_t>>> DumpParametersResponse;
 Queue<bool> StoreParametersResponse;
 Queue<bool> CalibrateIMUResponse;
+Queue<bool> RestartControllerResponse;
 
 void LSPC_Callback_StateEstimates(ros::Publisher& pubOdom, ros::Publisher& pubStateEstimate, tf::TransformBroadcaster& tfBroadcaster, std::shared_ptr<tf::TransformListener> tfListener, const std::vector<uint8_t>& payload)
 {
@@ -488,10 +490,6 @@ bool ParseParamTypeAndID(const std::string in_type, const std::string in_param, 
             out_param = lspc::ParameterLookup::EnableRawSensorOutput;
             out_valueType = lspc::ParameterLookup::_bool;
         }
-        else if (!in_param.compare("UseFilteredIMUinRawSensorOutput")) {
-            out_param = lspc::ParameterLookup::UseFilteredIMUinRawSensorOutput;
-            out_valueType = lspc::ParameterLookup::_bool;
-        }
         else {
             ROS_DEBUG("Parameter lookup: Parameter not found");
             return false;
@@ -533,6 +531,31 @@ bool ParseParamTypeAndID(const std::string in_type, const std::string in_param, 
         else if (!in_param.compare("ContinousSwitching")) {
             out_param = lspc::ParameterLookup::ContinousSwitching;
             out_valueType = lspc::ParameterLookup::_bool;
+        }
+        else if (!in_param.compare("eta")) {
+            out_param = lspc::ParameterLookup::eta;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+        else if (!in_param.compare("epsilon")) {
+            out_param = lspc::ParameterLookup::epsilon;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+        else if (!in_param.compare("K")) {
+            out_param = lspc::ParameterLookup::K;
+            out_valueType = lspc::ParameterLookup::_float;
+            out_arraySize = 3;
+        }
+        else if (!in_param.compare("Kx")) {
+            out_param = lspc::ParameterLookup::Kx;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+        else if (!in_param.compare("Ky")) {
+            out_param = lspc::ParameterLookup::Ky;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+        else if (!in_param.compare("Kz")) {
+            out_param = lspc::ParameterLookup::Kz;
+            out_valueType = lspc::ParameterLookup::_float;
         }
         else if (!in_param.compare("DisableQdot")) {
             out_param = lspc::ParameterLookup::DisableQdot;
@@ -600,8 +623,22 @@ bool ParseParamTypeAndID(const std::string in_type, const std::string in_param, 
     }
 
     else if (out_type == lspc::ParameterLookup::model) {
-        ROS_DEBUG("Parameter lookup: Parameter not found");
-        return false; // not implemented yet
+        if (!in_param.compare("l")) {
+            out_param = lspc::ParameterLookup::l;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+        else if (!in_param.compare("Mk")) {
+            out_param = lspc::ParameterLookup::Mk;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+        else if (!in_param.compare("Mb")) {
+            out_param = lspc::ParameterLookup::Mb;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+        else {
+            ROS_DEBUG("Parameter lookup: Parameter not found");
+            return false;
+        }
     }
 
     else if (out_type == lspc::ParameterLookup::test) {
@@ -644,85 +681,107 @@ bool ROS_Service_SetParameter(kugle_srvs::SetParameter::Request &req, kugle_srvs
     /* Prepare header part of set parameter message */
     std::vector<uint8_t> payloadPacked((uint8_t *)&msg, (uint8_t *)&msg+sizeof(msg)); // this method of "serializing" requires that PC runs Little Endian (which most PC processors do = Intel x86, AMD 64 etc.)
 
+    std::istringstream iss(req.value);
+    std::vector<std::string> values((std::istream_iterator<std::string>(iss)),  // split string by spaces
+                                     std::istream_iterator<std::string>());
+
     /* Parse parameter value based on type - currently this does not support arrays! */
-    if (msg.valueType == lspc::ParameterLookup::_bool) {
-        if (!req.value.compare("true"))
-            payloadPacked.push_back(1);
-        else if (!req.value.compare("false"))
-            payloadPacked.push_back(0);
-        else {
-            lspcMutex->unlock();
-            return true; // value could not be parsed
-        }
-    }
-    else if (msg.valueType == lspc::ParameterLookup::_uint8) {
-        uint8_t value;
-        try {
-            value = uint8_t(std::stoi(req.value));
-        }
-        catch (std::invalid_argument& e) {   // value could not be parsed (eg. is not a number)
-            // input could be a string that should be converted
-            if (msg.type == lspc::ParameterLookup::controller && msg.param == lspc::ParameterLookup::mode) {
-                value = ParseControllerMode2(req.value);
-                if (value == lspc::ParameterTypes::UNKNOWN_MODE) {
+    for (std::string valueString : values) {
+        if (msg.valueType == lspc::ParameterLookup::_bool) {
+            if (!valueString.compare("true"))
+                payloadPacked.push_back(1);
+            else if (!valueString.compare("false"))
+                payloadPacked.push_back(0);
+            else {
+                lspcMutex->unlock();
+                return true; // value could not be parsed
+            }
+        } else if (msg.valueType == lspc::ParameterLookup::_uint8) {
+            uint8_t value;
+            try {
+                value = uint8_t(std::stoi(valueString));
+            }
+            catch (std::invalid_argument &e) {   // value could not be parsed (eg. is not a number)
+                // input could be a string that should be converted
+                if (msg.type == lspc::ParameterLookup::controller && msg.param == lspc::ParameterLookup::mode) {
+                    value = ParseControllerMode2(valueString);
+                    if (value == lspc::ParameterTypes::UNKNOWN_MODE) {
+                        lspcMutex->unlock();
+                        return true;
+                    }
+                } else if (msg.type == lspc::ParameterLookup::controller && msg.param == lspc::ParameterLookup::type) {
+                    value = ParseControllerType2(valueString);
+                    if (value == lspc::ParameterTypes::UNKNOWN_CONTROLLER) {
+                        lspcMutex->unlock();
+                        return true;
+                    }
+                } else { // not a parameter where we expect a string
                     lspcMutex->unlock();
                     return true;
                 }
-            } else if (msg.type == lspc::ParameterLookup::controller && msg.param == lspc::ParameterLookup::type) {
-                value = ParseControllerType2(req.value);
-                if (value == lspc::ParameterTypes::UNKNOWN_CONTROLLER) {
-                    lspcMutex->unlock();
-                    return true;
-                }
-            } else { // not a parameter where we expect a string
+            }
+            catch (std::out_of_range &e) {
                 lspcMutex->unlock();
                 return true;
             }
+            payloadPacked.push_back(value);
+        } else if (msg.valueType == lspc::ParameterLookup::_uint16) {
+            uint16_t value;
+            try {
+                value = uint16_t(std::stoi(valueString));
+            }
+            catch (std::invalid_argument &e) {
+                lspcMutex->unlock();
+                return true;
+            }  // value could not be parsed (eg. is not a number)
+            catch (std::out_of_range &e) {
+                lspcMutex->unlock();
+                return true;
+            }
+            uint8_t *valuePtr = reinterpret_cast<uint8_t *>(&value);
+            payloadPacked.push_back(valuePtr[0]);
+            payloadPacked.push_back(valuePtr[1]);
+        } else if (msg.valueType == lspc::ParameterLookup::_uint32) {
+            uint32_t value;
+            try {
+                value = uint32_t(std::stol(valueString));
+            }
+            catch (std::invalid_argument &e) {
+                lspcMutex->unlock();
+                return true;
+            }  // value could not be parsed (eg. is not a number)
+            catch (std::out_of_range &e) {
+                lspcMutex->unlock();
+                return true;
+            }
+            uint8_t *valuePtr = reinterpret_cast<uint8_t *>(&value);
+            payloadPacked.push_back(valuePtr[0]);
+            payloadPacked.push_back(valuePtr[1]);
+            payloadPacked.push_back(valuePtr[2]);
+            payloadPacked.push_back(valuePtr[3]);
+        } else if (msg.valueType == lspc::ParameterLookup::_float) {
+            float value;
+            try {
+                value = std::stof(valueString);
+            }
+            catch (std::invalid_argument &e) {
+                lspcMutex->unlock();
+                return true;
+            }  // value could not be parsed (eg. is not a number)
+            catch (std::out_of_range &e) {
+                lspcMutex->unlock();
+                return true;
+            }
+            uint8_t *valuePtr = reinterpret_cast<uint8_t *>(&value);
+            payloadPacked.push_back(valuePtr[0]);
+            payloadPacked.push_back(valuePtr[1]);
+            payloadPacked.push_back(valuePtr[2]);
+            payloadPacked.push_back(valuePtr[3]);
+        } else {
+            ROS_DEBUG("Set parameter: Incorrect valuetype");
+            lspcMutex->unlock();
+            return true; // incorrect valuetype
         }
-        catch (std::out_of_range& e) { lspcMutex->unlock(); return true; }
-        payloadPacked.push_back(value);
-    }
-    else if (msg.valueType == lspc::ParameterLookup::_uint16) {
-        uint16_t value;
-        try {
-            value = uint16_t(std::stoi(req.value));
-        }
-        catch (std::invalid_argument& e) { lspcMutex->unlock(); return true; }  // value could not be parsed (eg. is not a number)
-        catch (std::out_of_range& e) { lspcMutex->unlock(); return true; }
-        uint8_t * valuePtr = reinterpret_cast<uint8_t *>(&value);
-        payloadPacked.push_back(valuePtr[0]);
-        payloadPacked.push_back(valuePtr[1]);
-    }
-    else if (msg.valueType == lspc::ParameterLookup::_uint32) {
-        uint32_t value;
-        try {
-            value = uint32_t(std::stol(req.value));
-        }
-        catch (std::invalid_argument& e) { lspcMutex->unlock(); return true; }  // value could not be parsed (eg. is not a number)
-        catch (std::out_of_range& e) { lspcMutex->unlock(); return true; }
-        uint8_t * valuePtr = reinterpret_cast<uint8_t *>(&value);
-        payloadPacked.push_back(valuePtr[0]);
-        payloadPacked.push_back(valuePtr[1]);
-        payloadPacked.push_back(valuePtr[2]);
-        payloadPacked.push_back(valuePtr[3]);
-    }
-    else if (msg.valueType == lspc::ParameterLookup::_float) {
-        float value;
-        try {
-            value = std::stof(req.value);
-        }
-        catch (std::invalid_argument& e) { lspcMutex->unlock(); return true; }  // value could not be parsed (eg. is not a number)
-        catch (std::out_of_range& e) { lspcMutex->unlock(); return true; }
-        uint8_t * valuePtr = reinterpret_cast<uint8_t *>(&value);
-        payloadPacked.push_back(valuePtr[0]);
-        payloadPacked.push_back(valuePtr[1]);
-        payloadPacked.push_back(valuePtr[2]);
-        payloadPacked.push_back(valuePtr[3]);
-    }
-    else {
-        ROS_DEBUG("Set parameter: Incorrect valuetype");
-        lspcMutex->unlock();
-        return true; // incorrect valuetype
     }
 
     /* Send message to embedded controller */
@@ -830,28 +889,40 @@ bool ROS_Service_GetParameter(kugle_srvs::GetParameter::Request &req, kugle_srvs
     void * paramPtr = &response->at(sizeof(lspc::MessageTypesToPC::GetParameter_t));
     std::ostringstream os;
 
-    if (msgResponse->valueType == lspc::ParameterLookup::_bool) {
-        bool value = reinterpret_cast<bool *>(paramPtr)[0];
-        if (value)
-            os << "true";
-        else
-            os << "false";
-    }
-    else if (msgResponse->valueType == lspc::ParameterLookup::_uint8) {
-        uint8_t value = reinterpret_cast<uint8_t *>(paramPtr)[0];
-        os << int(value);
-    }
-    else if (msgResponse->valueType == lspc::ParameterLookup::_uint16) {
-        uint16_t value = reinterpret_cast<uint8_t *>(paramPtr)[0];
-        os << int(value);
-    }
-    else if (msgResponse->valueType == lspc::ParameterLookup::_uint32) {
-        uint32_t value = reinterpret_cast<uint8_t *>(paramPtr)[0];
-        os << long(value);
-    }
-    else if (msgResponse->valueType == lspc::ParameterLookup::_float) {
-        float value = reinterpret_cast<float *>(paramPtr)[0];
-        os << std::setprecision(10) << value;
+    unsigned int valuesLength = response->size() - sizeof(lspc::MessageTypesToPC::GetParameter_t);
+    unsigned int ptrIndex = 0;
+    while (ptrIndex < valuesLength) {
+        if (ptrIndex != 0) os << " "; // add a space between multiple values
+        if (msgResponse->valueType == lspc::ParameterLookup::_bool) {
+            bool value = reinterpret_cast<bool *>(&reinterpret_cast<uint8_t *>(paramPtr)[ptrIndex])[0];
+            if (value)
+                os << "true";
+            else
+                os << "false";
+            ptrIndex += 1;
+        } else if (msgResponse->valueType == lspc::ParameterLookup::_uint8) {
+            uint8_t value = reinterpret_cast<uint8_t *>(paramPtr)[ptrIndex];
+            if (msg.type == lspc::ParameterLookup::controller && msg.param == lspc::ParameterLookup::mode) { // controller mode requested - output parsed mode as string
+                os << ParseControllerMode((lspc::ParameterTypes::controllerMode_t)value);
+            } else if (msg.type == lspc::ParameterLookup::controller && msg.param == lspc::ParameterLookup::type) {
+                os << ParseControllerType((lspc::ParameterTypes::controllerType_t)value);
+            } else { // not a parameter where we expect a string
+                os << int(value);
+            }
+            ptrIndex += 1;
+        } else if (msgResponse->valueType == lspc::ParameterLookup::_uint16) {
+            uint16_t value = reinterpret_cast<uint16_t *>(&reinterpret_cast<uint8_t *>(paramPtr)[ptrIndex])[0];
+            os << int(value);
+            ptrIndex += 2;
+        } else if (msgResponse->valueType == lspc::ParameterLookup::_uint32) {
+            uint32_t value = reinterpret_cast<uint16_t *>(&reinterpret_cast<uint8_t *>(paramPtr)[ptrIndex])[0];
+            os << long(value);
+            ptrIndex += 4;
+        } else if (msgResponse->valueType == lspc::ParameterLookup::_float) {
+            float value = reinterpret_cast<float *>(&reinterpret_cast<uint8_t *>(paramPtr)[ptrIndex])[0];
+            os << std::setprecision(10) << value;
+            ptrIndex += 4;
+        }
     }
 
     res.value = os.str();
@@ -1014,6 +1085,47 @@ void LSPC_Callback_CalibrateIMUAck(const std::vector<uint8_t>& payload)
     CalibrateIMUResponse.push(msgRaw->acknowledged);
 }
 
+
+bool ROS_Service_RestartController(kugle_srvs::RestartController::Request &req, kugle_srvs::RestartController::Response &res, std::shared_ptr<std::timed_mutex> lspcMutex, std::shared_ptr<lspc::Socket *> lspcObj)
+{
+    if (!lspcMutex->try_lock_for(std::chrono::milliseconds(100))) return false; // could not get lock
+
+    if (!(*lspcObj)->isOpen()) {
+        lspcMutex->unlock();
+        return false; // connection is not open
+    }
+
+    lspc::MessageTypesFromPC::RestartController_t msg;
+    msg.magic_key = 0x12345678;
+    std::vector<uint8_t> payloadPacked((uint8_t *)&msg, (uint8_t *)&msg+sizeof(msg));
+    (*lspcObj)->send(lspc::MessageTypesFromPC::RestartController, payloadPacked);
+
+    /* Wait for response */
+    bool acknowledged;
+    if (!RestartControllerResponse.pop(acknowledged, 2)) { // 2 seconds timeout
+        ROS_DEBUG("Restart Controller: Response timeout");
+        lspcMutex->unlock();
+        return false; // timeout
+    }
+
+    res.acknowledged = acknowledged;
+
+    lspcMutex->unlock();
+    return true;
+}
+
+void LSPC_Callback_RestartControllerAck(const std::vector<uint8_t>& payload)
+{
+    ROS_DEBUG_STREAM("Restart Controller acknowledge message received");
+    const lspc::MessageTypesToPC::RestartControllerAck_t * msgRaw = reinterpret_cast<const lspc::MessageTypesToPC::RestartControllerAck_t *>(payload.data());
+    if (sizeof(*msgRaw) != payload.size()) {
+        ROS_DEBUG("Error parsing RestartControllerAck message");
+        return;
+    }
+
+    RestartControllerResponse.push(msgRaw->acknowledged);
+}
+
 bool ROS_Service_Reboot(kugle_srvs::Reboot::Request &req, kugle_srvs::Reboot::Response &res, std::shared_ptr<std::timed_mutex> lspcMutex, std::shared_ptr<lspc::Socket *> lspcObj)
 {
     res.acknowledged = false;
@@ -1122,6 +1234,7 @@ void LSPC_ConnectionThread(boost::shared_ptr<ros::NodeHandle> n, std::string ser
         (*lspcObj)->registerCallback(lspc::MessageTypesToPC::RawSensor_Battery, boost::bind(&LSPC_Callback_RawSensor_Battery, pub_battery, _1));
         (*lspcObj)->registerCallback(lspc::MessageTypesToPC::RawSensor_Encoders, boost::bind(&LSPC_Callback_RawSensor_Encoders, pub_encoders, _1));
         (*lspcObj)->registerCallback(lspc::MessageTypesToPC::CalibrateIMUAck, &LSPC_Callback_CalibrateIMUAck);
+        (*lspcObj)->registerCallback(lspc::MessageTypesToPC::RestartControllerAck, &LSPC_Callback_RestartControllerAck);
         (*lspcObj)->registerCallback(lspc::MessageTypesToPC::CPUload, boost::bind(&LSPC_Callback_CPUload, pub_mcu_load, _1));
         (*lspcObj)->registerCallback(lspc::MessageTypesToPC::MathDump, boost::bind(&LSPC_Callback_MathDump, mathdumpFile, _1));
         (*lspcObj)->registerCallback(lspc::MessageTypesToPC::Debug, boost::bind(&LSPC_Callback_Debug, pub_mcu_debug, _1));
@@ -1174,6 +1287,7 @@ int main(int argc, char **argv) {
     ros::ServiceServer serv_calibrate_imu = n->advertiseService<kugle_srvs::CalibrateIMU::Request, kugle_srvs::CalibrateIMU::Response>("/kugle/calibrate_imu", boost::bind(&ROS_Service_CalibrateIMU, _1, _2, lspcMutex, lspcObj));
     ros::ServiceServer serv_reboot = n->advertiseService<kugle_srvs::Reboot::Request, kugle_srvs::Reboot::Response>("/kugle/reboot", boost::bind(&ROS_Service_Reboot, _1, _2, lspcMutex, lspcObj));
     ros::ServiceServer serv_enter_bootloader = n->advertiseService<kugle_srvs::EnterBootloader::Request, kugle_srvs::EnterBootloader::Response>("/kugle/enter_bootloader", boost::bind(&ROS_Service_EnterBootloader, _1, _2, lspcMutex, lspcObj));
+    ros::ServiceServer serv_restart_controller = n->advertiseService<kugle_srvs::RestartController::Request, kugle_srvs::RestartController::Response>("/kugle/restart_controller", boost::bind(&ROS_Service_RestartController, _1, _2, lspcMutex, lspcObj));
 
     ros::spin();
 

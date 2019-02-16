@@ -16,6 +16,7 @@ add_service_files(
   CalibrateIMU.srv
   Reboot.srv
   EnterBootloader.srv
+  RestartController.srv
 )
 
 #add_action_files(
