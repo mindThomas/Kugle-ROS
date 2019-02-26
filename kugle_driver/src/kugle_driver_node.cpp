@@ -64,6 +64,7 @@
 #include <kugle_srvs/DumpParameters.h>
 #include <kugle_srvs/StoreParameters.h>
 #include <kugle_srvs/CalibrateIMU.h>
+#include <kugle_srvs/CalibrateAccelerometer.h>
 #include <kugle_srvs/Reboot.h>
 #include <kugle_srvs/EnterBootloader.h>
 #include <kugle_srvs/RestartController.h>
@@ -372,7 +373,7 @@ void LSPC_Callback_CPUload(ros::Publisher& pubLoad, const std::vector<uint8_t>& 
     pubLoad.publish(msg);
 }
 
-void LSPC_Callback_MathDump(std::shared_ptr<std::ofstream> log_file, const std::vector<uint8_t>& payload)
+void LSPC_Callback_ArrayDump(std::shared_ptr<std::ofstream> log_file, const std::vector<uint8_t>& payload)
 {
     int numberOfFloats = payload.size() / 4;
     const float * floatArray = reinterpret_cast<const float *>(payload.data());
@@ -604,8 +605,8 @@ bool ParseParamTypeAndID(const std::string in_type, const std::string in_param, 
             out_param = lspc::ParameterLookup::UseVelocityEstimator;
             out_valueType = lspc::ParameterLookup::_bool;
         }
-        else if (!in_param.compare("Use2Lvelocity")) {
-            out_param = lspc::ParameterLookup::Use2Lvelocity;
+        else if (!in_param.compare("UseCoRvelocity")) {
+            out_param = lspc::ParameterLookup::UseCoRvelocity;
             out_valueType = lspc::ParameterLookup::_bool;
         }
         else if (!in_param.compare("EstimateCOM")) {
@@ -1055,6 +1056,36 @@ bool ROS_Service_CalibrateIMU(kugle_srvs::CalibrateIMU::Request &req, kugle_srvs
     }
 
     lspc::MessageTypesFromPC::CalibrateIMU_t msg;
+    msg.calibrate_accelerometer = false;
+    msg.magic_key = 0x12345678;
+    std::vector<uint8_t> payloadPacked((uint8_t *)&msg, (uint8_t *)&msg+sizeof(msg));
+    (*lspcObj)->send(lspc::MessageTypesFromPC::CalibrateIMU, payloadPacked);
+
+    /* Wait for response */
+    bool acknowledged;
+    if (!CalibrateIMUResponse.pop(acknowledged, 2)) { // 2 seconds timeout
+        ROS_DEBUG("Calibrate IMU: Response timeout");
+        lspcMutex->unlock();
+        return false; // timeout
+    }
+
+    res.acknowledged = acknowledged;
+
+    lspcMutex->unlock();
+    return true;
+}
+
+bool ROS_Service_CalibrateAccelerometer(kugle_srvs::CalibrateAccelerometer::Request &req, kugle_srvs::CalibrateAccelerometer::Response &res, std::shared_ptr<std::timed_mutex> lspcMutex, std::shared_ptr<lspc::Socket *> lspcObj)
+{
+    if (!lspcMutex->try_lock_for(std::chrono::milliseconds(100))) return false; // could not get lock
+
+    if (!(*lspcObj)->isOpen()) {
+        lspcMutex->unlock();
+        return false; // connection is not open
+    }
+
+    lspc::MessageTypesFromPC::CalibrateIMU_t msg;
+    msg.calibrate_accelerometer = true;
     msg.magic_key = 0x12345678;
     std::vector<uint8_t> payloadPacked((uint8_t *)&msg, (uint8_t *)&msg+sizeof(msg));
     (*lspcObj)->send(lspc::MessageTypesFromPC::CalibrateIMU, payloadPacked);
@@ -1213,11 +1244,42 @@ void LSPC_ConnectionThread(boost::shared_ptr<ros::NodeHandle> n, std::string ser
                     ROS_DEBUG("Successfully created mathdump log folder (~/kugle_dump)");
             }
         }
-        std::shared_ptr<std::ofstream> mathdumpFile = std::make_shared<std::ofstream>();
 
-        std::string mathdumpFilename = GetFormattedTimestampCurrent() + ".txt";
-        mathdumpFile->open(std::string(getenv("HOME")) + "/kugle_dump/" + mathdumpFilename, std::ofstream::trunc);
-        ROS_DEBUG_STREAM("Created mathdump file: ~/kugle_dump/" << mathdumpFilename);
+        if (!boost::filesystem::is_directory(boost::filesystem::path(std::string(getenv("HOME")) + "/kugle_dump/sensor"))) {
+            if (boost::filesystem::exists(boost::filesystem::path(std::string(getenv("HOME")) + "/kugle_dump/sensor"))) {
+                ROS_WARN("Sensor dump path (~/kugle_dump/sensor) already exists but without write permissions");
+            } else {
+                if (!boost::filesystem::create_directory(boost::filesystem::path(std::string(getenv("HOME")) + "/kugle_dump/sensor")))
+                    ROS_WARN("Could not create sensor dump log folder (~/kugle_dump/sensor)");
+                else
+                    ROS_DEBUG("Successfully created sensor dump log folder (~/kugle_dump/sensor)");
+            }
+        }
+
+        if (!boost::filesystem::is_directory(boost::filesystem::path(std::string(getenv("HOME")) + "/kugle_dump/covariance"))) {
+            if (boost::filesystem::exists(boost::filesystem::path(std::string(getenv("HOME")) + "/kugle_dump/covariance"))) {
+                ROS_WARN("Covariance dump path (~/kugle_dump/covariance) already exists but without write permissions");
+            } else {
+                if (!boost::filesystem::create_directory(boost::filesystem::path(std::string(getenv("HOME")) + "/kugle_dump/covariance")))
+                    ROS_WARN("Could not create covariance dump log folder (~/kugle_dump/covariance)");
+                else
+                    ROS_DEBUG("Successfully created covariance dump log folder (~/kugle_dump/covariance)");
+            }
+        }
+
+        std::shared_ptr<std::ofstream> mathdumpFile = std::make_shared<std::ofstream>();
+        std::shared_ptr<std::ofstream> sensordumpFile = std::make_shared<std::ofstream>();
+        std::shared_ptr<std::ofstream> covariancedumpFile = std::make_shared<std::ofstream>();
+
+        std::string dumpFilename = GetFormattedTimestampCurrent() + ".txt";
+        mathdumpFile->open(std::string(getenv("HOME")) + "/kugle_dump/" + dumpFilename, std::ofstream::trunc);
+        ROS_DEBUG_STREAM("Created mathdump file: ~/kugle_dump/" << dumpFilename);
+
+        sensordumpFile->open(std::string(getenv("HOME")) + "/kugle_dump/sensor/" + dumpFilename, std::ofstream::trunc);
+        ROS_DEBUG_STREAM("Created sensordump file: ~/kugle_dump/sensor/" << dumpFilename);
+
+        covariancedumpFile->open(std::string(getenv("HOME")) + "/kugle_dump/covariance/" + dumpFilename, std::ofstream::trunc);
+        ROS_DEBUG_STREAM("Created sensordump file: ~/kugle_dump/covariance/" << dumpFilename);
 
         lspcMutex->unlock();
 
@@ -1236,7 +1298,9 @@ void LSPC_ConnectionThread(boost::shared_ptr<ros::NodeHandle> n, std::string ser
         (*lspcObj)->registerCallback(lspc::MessageTypesToPC::CalibrateIMUAck, &LSPC_Callback_CalibrateIMUAck);
         (*lspcObj)->registerCallback(lspc::MessageTypesToPC::RestartControllerAck, &LSPC_Callback_RestartControllerAck);
         (*lspcObj)->registerCallback(lspc::MessageTypesToPC::CPUload, boost::bind(&LSPC_Callback_CPUload, pub_mcu_load, _1));
-        (*lspcObj)->registerCallback(lspc::MessageTypesToPC::MathDump, boost::bind(&LSPC_Callback_MathDump, mathdumpFile, _1));
+        (*lspcObj)->registerCallback(lspc::MessageTypesToPC::MathDump, boost::bind(&LSPC_Callback_ArrayDump, mathdumpFile, _1));
+        (*lspcObj)->registerCallback(lspc::MessageTypesToPC::SensorDump, boost::bind(&LSPC_Callback_ArrayDump, sensordumpFile, _1));
+        (*lspcObj)->registerCallback(lspc::MessageTypesToPC::CovarianceDump, boost::bind(&LSPC_Callback_ArrayDump, covariancedumpFile, _1));
         (*lspcObj)->registerCallback(lspc::MessageTypesToPC::Debug, boost::bind(&LSPC_Callback_Debug, pub_mcu_debug, _1));
 
         while ((*lspcObj)->isOpen() && ros::ok()) {
@@ -1285,6 +1349,7 @@ int main(int argc, char **argv) {
     ros::ServiceServer serv_dump_parameters = n->advertiseService<kugle_srvs::DumpParameters::Request, kugle_srvs::DumpParameters::Response>("/kugle/dump_parameters", boost::bind(&ROS_Service_DumpParameters, _1, _2, lspcMutex, lspcObj));
     ros::ServiceServer serv_store_parameters = n->advertiseService<kugle_srvs::StoreParameters::Request, kugle_srvs::StoreParameters::Response>("/kugle/store_parameters", boost::bind(&ROS_Service_StoreParameters, _1, _2, lspcMutex, lspcObj));
     ros::ServiceServer serv_calibrate_imu = n->advertiseService<kugle_srvs::CalibrateIMU::Request, kugle_srvs::CalibrateIMU::Response>("/kugle/calibrate_imu", boost::bind(&ROS_Service_CalibrateIMU, _1, _2, lspcMutex, lspcObj));
+    ros::ServiceServer serv_calibrate_accelerometer = n->advertiseService<kugle_srvs::CalibrateAccelerometer::Request, kugle_srvs::CalibrateAccelerometer::Response>("/kugle/calibrate_accelerometer", boost::bind(&ROS_Service_CalibrateAccelerometer, _1, _2, lspcMutex, lspcObj));
     ros::ServiceServer serv_reboot = n->advertiseService<kugle_srvs::Reboot::Request, kugle_srvs::Reboot::Response>("/kugle/reboot", boost::bind(&ROS_Service_Reboot, _1, _2, lspcMutex, lspcObj));
     ros::ServiceServer serv_enter_bootloader = n->advertiseService<kugle_srvs::EnterBootloader::Request, kugle_srvs::EnterBootloader::Response>("/kugle/enter_bootloader", boost::bind(&ROS_Service_EnterBootloader, _1, _2, lspcMutex, lspcObj));
     ros::ServiceServer serv_restart_controller = n->advertiseService<kugle_srvs::RestartController::Request, kugle_srvs::RestartController::Response>("/kugle/restart_controller", boost::bind(&ROS_Service_RestartController, _1, _2, lspcMutex, lspcObj));

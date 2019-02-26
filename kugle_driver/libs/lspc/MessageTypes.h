@@ -1,3 +1,24 @@
+/* Copyright (C) 2018-2019 Thomas Jespersen, TKJ Electronics. All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, version 3.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * General Public License for more details.
+ *
+ * Contact information
+ * ------------------------------------------
+ * Thomas Jespersen, TKJ Electronics
+ * Web      :  http://www.tkjelectronics.dk
+ * e-mail   :  thomasj@tkjelectronics.dk
+ * ------------------------------------------
+ */
+
+/* OBS. Remember to keep this file consistent across the Embedded Firmware (Kugle-Embedded) and ROS Driver (Kugle-ROS) */
+
 #ifndef LSPC_MESSAGE_TYPES_HPP
 #define LSPC_MESSAGE_TYPES_HPP
 
@@ -78,7 +99,7 @@ namespace lspc
             CreateQdotFromQDifference,
             UseMadgwick,
             EstimateBias,
-            Use2Lvelocity,
+            UseCoRvelocity,
             UseVelocityEstimator,
             UseCOMestimateInVelocityEstimator,
             EstimateCOM,
@@ -144,6 +165,12 @@ namespace lspc
             PATH_FOLLOWING,
             UNKNOWN_MODE = 0xFF
         } controllerMode_t;
+
+        typedef enum: uint8_t {
+            POWER_OFF = 0x00, // default
+            START_STOP_QUATERNION_CONTROLLER,
+            START_STOP_VELOCITY_CONTROLLER
+        } powerButtonMode_t;
     }
 
     namespace MessageTypesFromPC
@@ -272,6 +299,7 @@ namespace lspc
         typedef struct
         {
             uint32_t magic_key;
+            bool calibrate_accelerometer;
         } CalibrateIMU_t;
 
         typedef struct
@@ -314,6 +342,8 @@ namespace lspc
             CPUload = 0xE1,
             RestartControllerAck = 0xE2,
             MathDump = 0xFA, // publish array of floats (parsed by PC and dumped into tabulated .txt file in "~/kugle_dump/")
+            SensorDump = 0xFB,
+            CovarianceDump = 0xFC,
             Debug = 0xFF
         } MessageTypesToPC_t;
 
