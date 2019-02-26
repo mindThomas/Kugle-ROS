@@ -14,6 +14,7 @@ add_service_files(
   DumpParameters.srv
   StoreParameters.srv
   CalibrateIMU.srv
+  CalibrateAccelerometer.srv
   Reboot.srv
   EnterBootloader.srv
   RestartController.srv
