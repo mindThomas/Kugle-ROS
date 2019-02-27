@@ -30,6 +30,7 @@
 #include <chrono>
 #include <cstdint>
 #include <tuple>
+#include <cmath>
 
 #include "Queue.hpp"
 #include <cstdio>
@@ -73,6 +74,9 @@
 #include <kugle_msgs/ControllerInfo.h>
 #include <kugle_msgs/Encoders.h>
 #include <kugle_msgs/StateEstimate.h>
+#include <kugle_msgs/Euler.h>
+#include <kugle_msgs/Vector2.h>
+#include <kugle_msgs/ControllerDebug.h>
 
 /* Global variables */
 Queue<std::tuple<lspc::ParameterLookup::type_t, uint8_t, bool>> SetParameterResponse;
@@ -286,6 +290,59 @@ void LSPC_Callback_ControllerInfo(ros::Publisher& pubControllerInfo, const std::
     msg.delivered_torque[1] = msgRaw->delivered_torque2;
     msg.delivered_torque[2] = msgRaw->delivered_torque3;
     pubControllerInfo.publish(msg);
+}
+
+void LSPC_Callback_ControllerDebug(ros::Publisher& pubControllerDebug, const std::vector<uint8_t>& payload)
+{
+    //ROS_DEBUG_STREAM("Controller debug received");
+    const lspc::MessageTypesToPC::ControllerDebug_t * msgRaw = reinterpret_cast<const lspc::MessageTypesToPC::ControllerDebug_t *>(payload.data());
+    if (sizeof(*msgRaw) != payload.size()) {
+        ROS_DEBUG("Error parsing ControllerDebug message");
+        return;
+    }
+
+    kugle_msgs::ControllerDebug msg;
+    msg.receive_time = ros::Time::now();
+    msg.mcu_time = msgRaw->time;
+
+    msg.orient.roll = msgRaw->orient.roll;
+    msg.orient.pitch = msgRaw->orient.pitch;
+    msg.orient.yaw = msgRaw->orient.yaw;
+
+    msg.orient_ref.roll = msgRaw->orient_ref.roll;
+    msg.orient_ref.pitch = msgRaw->orient_ref.pitch;
+    msg.orient_ref.yaw = msgRaw->orient_ref.yaw;
+
+    msg.orient_integral.roll = msgRaw->orient_integral.roll;
+    msg.orient_integral.pitch = msgRaw->orient_integral.pitch;
+    msg.orient_integral.yaw = msgRaw->orient_integral.yaw;
+
+    msg.omega.x = msgRaw->omega.x;
+    msg.omega.y = msgRaw->omega.y;
+    msg.omega.z = msgRaw->omega.z;
+
+    msg.omega_ref.x = msgRaw->omega_ref.x;
+    msg.omega_ref.y = msgRaw->omega_ref.y;
+    msg.omega_ref.z = msgRaw->omega_ref.z;
+
+    msg.vel.x = msgRaw->vel.x;
+    msg.vel.y = msgRaw->vel.y;
+
+    msg.vel_kinematics.x = msgRaw->vel_kinematics.x;
+    msg.vel_kinematics.y = msgRaw->vel_kinematics.y;
+
+    msg.vel_ref.x = msgRaw->vel_ref.x;
+    msg.vel_ref.y = msgRaw->vel_ref.y;
+
+    msg.torque[0] = msgRaw->torque[0];
+    msg.torque[1] = msgRaw->torque[1];
+    msg.torque[2] = msgRaw->torque[2];
+
+    msg.S[0] = msgRaw->S[0];
+    msg.S[1] = msgRaw->S[1];
+    msg.S[2] = msgRaw->S[2];
+
+    pubControllerDebug.publish(msg);
 }
 
 void LSPC_Callback_RawSensor_IMU_MPU9250(ros::Publisher& pubIMU, ros::Publisher& pubMag, const std::vector<uint8_t>& payload)
@@ -510,6 +567,10 @@ bool ParseParamTypeAndID(const std::string in_type, const std::string in_param, 
             out_param = lspc::ParameterLookup::StepTestEnabled;
             out_valueType = lspc::ParameterLookup::_bool;
         }
+        else if (!in_param.compare("SineTestEnabled")) {
+            out_param = lspc::ParameterLookup::SineTestEnabled;
+            out_valueType = lspc::ParameterLookup::_bool;
+        }
         else {
             ROS_DEBUG("Parameter lookup: Parameter not found");
             return false;
@@ -533,13 +594,19 @@ bool ParseParamTypeAndID(const std::string in_type, const std::string in_param, 
             out_param = lspc::ParameterLookup::ContinousSwitching;
             out_valueType = lspc::ParameterLookup::_bool;
         }
+        else if (!in_param.compare("EquivalentControl")) {
+            out_param = lspc::ParameterLookup::EquivalentControl;
+            out_valueType = lspc::ParameterLookup::_bool;
+        }
         else if (!in_param.compare("eta")) {
             out_param = lspc::ParameterLookup::eta;
             out_valueType = lspc::ParameterLookup::_float;
+            out_arraySize = 3;
         }
         else if (!in_param.compare("epsilon")) {
             out_param = lspc::ParameterLookup::epsilon;
             out_valueType = lspc::ParameterLookup::_float;
+            out_arraySize = 3;
         }
         else if (!in_param.compare("K")) {
             out_param = lspc::ParameterLookup::K;
@@ -617,6 +684,22 @@ bool ParseParamTypeAndID(const std::string in_type, const std::string in_param, 
             out_param = lspc::ParameterLookup::UseCOMestimateInVelocityEstimator;
             out_valueType = lspc::ParameterLookup::_bool;
         }
+        else if (!in_param.compare("sigma2_bias")) {
+            out_param = lspc::ParameterLookup::sigma2_bias;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+        else if (!in_param.compare("sigma2_omega")) {
+            out_param = lspc::ParameterLookup::sigma2_omega;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+        else if (!in_param.compare("sigma2_heading")) {
+            out_param = lspc::ParameterLookup::sigma2_heading;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+        else if (!in_param.compare("GyroscopeTrustFactor")) {
+            out_param = lspc::ParameterLookup::GyroscopeTrustFactor;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
         else {
             ROS_DEBUG("Parameter lookup: Parameter not found");
             return false;
@@ -634,6 +717,18 @@ bool ParseParamTypeAndID(const std::string in_type, const std::string in_param, 
         }
         else if (!in_param.compare("Mb")) {
             out_param = lspc::ParameterLookup::Mb;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+        else if (!in_param.compare("Bvk")) {
+            out_param = lspc::ParameterLookup::Bvk;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+        else if (!in_param.compare("Bvm")) {
+            out_param = lspc::ParameterLookup::Bvm;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+        else if (!in_param.compare("Bvb")) {
+            out_param = lspc::ParameterLookup::Bvb;
             out_valueType = lspc::ParameterLookup::_float;
         }
         else {
@@ -687,7 +782,9 @@ bool ROS_Service_SetParameter(kugle_srvs::SetParameter::Request &req, kugle_srvs
                                      std::istream_iterator<std::string>());
 
     /* Parse parameter value based on type - currently this does not support arrays! */
-    for (std::string valueString : values) {
+    for (unsigned int i = 0; i < msg.arraySize; i++) {
+        std::string valueString = values.at(std::min<unsigned int>(i, values.size()-1));
+
         if (msg.valueType == lspc::ParameterLookup::_bool) {
             if (!valueString.compare("true"))
                 payloadPacked.push_back(1);
@@ -1217,6 +1314,7 @@ void LSPC_ConnectionThread(boost::shared_ptr<ros::NodeHandle> n, std::string ser
     ros::Publisher pub_state_estimate = n->advertise<kugle_msgs::StateEstimate>("state_estimate", 50);
     ros::Publisher pub_mcu_debug = n->advertise<std_msgs::String>("mcu_debug", 50);
     ros::Publisher pub_mcu_load = n->advertise<std_msgs::String>("mcu_load", 50);
+    ros::Publisher pub_controller_debug = n->advertise<kugle_msgs::ControllerDebug>("controller_debug", 50);
 
     lspcMutex->lock();
     while (exitSignalObj.wait_for(std::chrono::milliseconds(1)) == std::future_status::timeout) {
@@ -1290,6 +1388,7 @@ void LSPC_ConnectionThread(boost::shared_ptr<ros::NodeHandle> n, std::string ser
         (*lspcObj)->registerCallback(lspc::MessageTypesToPC::StoreParametersAck, &LSPC_Callback_StoreParametersAck);
         (*lspcObj)->registerCallback(lspc::MessageTypesToPC::SystemInfo, &LSPC_Callback_SystemInfo);
         (*lspcObj)->registerCallback(lspc::MessageTypesToPC::ControllerInfo, boost::bind(&LSPC_Callback_ControllerInfo, pub_controller_info, _1));
+        (*lspcObj)->registerCallback(lspc::MessageTypesToPC::ControllerDebug, boost::bind(&LSPC_Callback_ControllerDebug, pub_controller_debug, _1));
         (*lspcObj)->registerCallback(lspc::MessageTypesToPC::StateEstimates, boost::bind(&LSPC_Callback_StateEstimates, pub_odom, pub_state_estimate, tf_broadcaster, tf_listener, _1));
         (*lspcObj)->registerCallback(lspc::MessageTypesToPC::RawSensor_IMU_MPU9250, boost::bind(&LSPC_Callback_RawSensor_IMU_MPU9250, pub_imu, pub_mag, _1));
         (*lspcObj)->registerCallback(lspc::MessageTypesToPC::RawSensor_IMU_MTI200, &LSPC_Callback_RawSensor_IMU_MTI200);
@@ -1314,6 +1413,8 @@ void LSPC_ConnectionThread(boost::shared_ptr<ros::NodeHandle> n, std::string ser
         delete(*lspcObj); // call destructor to disconnect completely and clean up used ressources
 
         mathdumpFile->close();
+        sensordumpFile->close();
+        covariancedumpFile->close();
     }
 }
 
