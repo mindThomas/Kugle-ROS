@@ -52,6 +52,7 @@ include_directories(${Boost_INCLUDE_DIRS})
 # )
 
 generate_dynamic_reconfigure_options(
+  cfg/TestParameters.cfg  
   cfg/Parameters.cfg
 )
 
