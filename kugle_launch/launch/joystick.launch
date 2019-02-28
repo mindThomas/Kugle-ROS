@@ -3,6 +3,7 @@
 
 	<!-- Launch file for Joystick control -->
 
+	<!-- Remember to install "sudo pip install ds4drv" -->
 	<!-- Start "sudo ds4drv" in seperate terminal -->  	
   	<!--<node name="ds4drv_script_call" pkg="kugle_bringup" type="run_ds4drv.sh" output="screen" />-->
 

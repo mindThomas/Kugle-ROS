@@ -15,6 +15,7 @@ add_message_files(
   Euler.msg
   Vector2.msg
   ControllerDebug.msg
+  BalanceControllerReference.msg
 )
 
 generate_messages(DEPENDENCIES geometry_msgs std_msgs actionlib_msgs)
