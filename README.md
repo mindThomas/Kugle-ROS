@@ -11,12 +11,13 @@ sudo apt-get install python-rosdep
 To set up the simulation environment you need to clone the necessary repositories into an existing or new catkin workspace.
 Follow the steps below to set up a new catkin workspace and clone:
 ```bash
-mkdir -p ~/kugle_simulation_ws/src
-cd ~/kugle_simulation_ws/src
+mkdir -p ~/kugle_ws/src
+cd ~/kugle_ws/src
 catkin_init_workspace
 git clone https://github.com/mindThomas/Kugle-Gazebo
 git clone https://github.com/mindThomas/Kugle-ROS
 git clone https://github.com/mindThomas/realsense_gazebo_plugin
+cd ..
 rosdep install --from-paths src --ignore-src -r -y
 ```
 
