@@ -15,11 +15,11 @@
  	</node>
 
 	<node name="velocity_mapper" pkg="kugle_misc" type="joystick_velocity_mapper_node" respawn="true">
-	    	<remap from="cmd_vel" to="cmd_vel" />
+	    	<remap from="cmd_vel" to="cmd_vel" />  <!-- set to "cmd_vel" for control in body/heading frame or "cmd_vel_inertial" for control in inertial frame -->
 	    	<remap from="joy" to="joy" />
-    		<param name="maximum_linear_velocity" type="double" value="1.0" />
-    		<param name="maximum_angular_velocity" type="double" value="1.0" />
-		<param name="control_mode" type="string" value="body" /> <!-- should be inertial or body -->
+    		<param name="maximum_linear_velocity" type="double" value="0.5" />
+    		<param name="maximum_angular_velocity" type="double" value="0.5" />
+		<param name="publish_rate" type="int" value="10" />
  	</node>
 
 

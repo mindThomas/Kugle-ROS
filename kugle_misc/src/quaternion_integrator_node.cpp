@@ -62,7 +62,7 @@ int main(int argc, char **argv) {
 	// Configure angular velocity topic to subscribe to
 	std::string angular_velocity_body_topic;
 	if (!nParam.getParam("angular_velocity_body_topic", angular_velocity_body_topic)) {
-		angular_velocity_body_topic = "cmd_vel_angular";
+		angular_velocity_body_topic = "cmd_vel";
 		ROS_WARN_STREAM("[" << nodeName << "] angular_velocity_body_topic not set. Defaults to: " << angular_velocity_body_topic);
 	}
 	// Alternative is
@@ -72,7 +72,7 @@ int main(int argc, char **argv) {
 	// Configure angular velocity topic to subscribe to
 	std::string angular_velocity_inertial_topic;
 	if (!nParam.getParam("angular_velocity_inertial_topic", angular_velocity_inertial_topic)) {
-        angular_velocity_inertial_topic = "cmd_vel_angular_inertial";
+        angular_velocity_inertial_topic = "cmd_vel_inertial";
 		ROS_WARN_STREAM("[" << nodeName << "] angular_velocity_inertial_topic not set. Defaults to: " << angular_velocity_inertial_topic);
 	}
 	// Alternative is

@@ -27,21 +27,21 @@ ros::Publisher referencePub;
 ros::Subscriber joystickSub;
 double maximum_linear_velocity;
 double maximum_angular_velocity;
-bool controlModeIsInertial;
+
+struct {
+    ros::Time time;
+    double x;
+    double y;
+    double yawVel;
+} VelocityReference;
 
 void joystickCallback(const sensor_msgs::Joy::ConstPtr& msg)
 {
-	// Remap joystick message into twist (velocity) message
-	geometry_msgs::TwistStamped velocityMsg;
+    VelocityReference.time = ros::Time::now();
+    VelocityReference.x = maximum_linear_velocity * msg->axes[1]; // left stick Y
+    VelocityReference.y = maximum_linear_velocity * msg->axes[0]; // left stick X
+    VelocityReference.yawVel = maximum_angular_velocity * msg->axes[2]; // right stick X
 
-	if (controlModeIsInertial)
-		velocityMsg.header.frame_id = "world"; // control inertial velocity
-	else
-    	velocityMsg.header.frame_id = "robot"; // control velocity in heading frame
-
-	velocityMsg.twist.linear.x = maximum_linear_velocity * msg->axes[1]; // left stick Y
-    velocityMsg.twist.linear.y = maximum_linear_velocity * msg->axes[0]; // left stick X
-    velocityMsg.twist.angular.z = maximum_angular_velocity * msg->axes[2]; // right stick X
 	/*
 	    this->buttonSq = joy->buttons[0];
         this->buttonX = joy->buttons[1];
@@ -60,9 +60,28 @@ void joystickCallback(const sensor_msgs::Joy::ConstPtr& msg)
         this->leftStickY = joy->axes[1];
         this->rightStickX = joy->axes[2];
         this->rightStickY = joy->axes[5];
-	 */
+    */
+}
 
-	referencePub.publish(velocityMsg);
+void PublishVelocity(double timeout)
+{
+    geometry_msgs::Twist velocityMsg;
+    ros::Time current_ros_time = ros::Time::now();
+    ros::Duration diff = current_ros_time - VelocityReference.time;
+
+    velocityMsg.linear.x = 0;
+    velocityMsg.linear.y = 0;
+    velocityMsg.angular.x = 0;
+    velocityMsg.angular.y = 0;
+    velocityMsg.angular.z = 0;
+
+    if (diff.toSec() < timeout) { // update message with joystick-based velocity reference
+        velocityMsg.linear.x = VelocityReference.x;
+        velocityMsg.linear.y = VelocityReference.y;
+        velocityMsg.angular.z = VelocityReference.yawVel;
+    }
+
+    referencePub.publish(velocityMsg);
 }
 
 int main(int argc, char **argv) {
@@ -72,7 +91,7 @@ int main(int argc, char **argv) {
 	ros::NodeHandle nParam("~"); // private node handle
 
 	// Publish to reference topic
-	referencePub = n.advertise<geometry_msgs::TwistStamped>("cmd_vel", 1000);
+	referencePub = n.advertise<geometry_msgs::Twist>("cmd_vel", 1000);
 
 	// Subscribe to joystick topic
 	joystickSub = n.subscribe("joy", 1000, &joystickCallback);
@@ -81,20 +100,16 @@ int main(int argc, char **argv) {
     nParam.param("maximum_linear_velocity", maximum_linear_velocity, double(0.5));
     nParam.param("maximum_angular_velocity", maximum_angular_velocity, double(0.5));
 
-    // Get control mode
-	std::string control_mode;
-	nParam.param("control_mode", control_mode, std::string("body")); // defaults to body velocity references
-	if (!control_mode.compare("inertial")) // mode is inertial
-		controlModeIsInertial = true;
-	else
-		controlModeIsInertial = false;
+    // Get publish rate
+    int publish_rate;
+    nParam.param("publish_rate", publish_rate, int(10));
 
-	ros::spin();
-	/*
+	//ros::spin();
+	ros::Rate loop_rate(publish_rate); // publish at specified publish rate
 	while (ros::ok())
 	{
 		ros::spinOnce(); // walks the callback queue and calls registered callbacks for any outstanding events (incoming msgs, svc reqs, timers)
+        PublishVelocity(1.0/publish_rate);
 		loop_rate.sleep();
 	}
-	*/
 }

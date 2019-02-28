@@ -26,8 +26,8 @@
 	<!-- respawn=true means that in case the node shuts down it will be restarted -->
 	<!--<group ns="kugle">-->
 	<node name="quaternion_integrator_node" pkg="kugle_misc" type="quaternion_integrator_node" respawn="true" output="screen"> 
-		<param name="angular_velocity_body_topic" type="string" value="cmd_vel_angular" />
-		<param name="angular_velocity_inertial_topic" type="string" value="cmd_vel_angular_inertial" />
+		<param name="angular_velocity_body_topic" type="string" value="cmd_vel" />
+		<param name="angular_velocity_inertial_topic" type="string" value="cmd_vel_inertial" />
 		<param name="quaternion_topic" type="string" value="cmd_quaternion" />
 		<param name="timeout" type="double" value="1.0" />
 		<param name="rate" type="double" value="200" />
