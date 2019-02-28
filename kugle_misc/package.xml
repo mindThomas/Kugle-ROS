@@ -55,6 +55,8 @@
   <depend>sensor_msgs</depend>
   <depend>nav_msgs</depend>
   <depend>tf</depend>
+  <depend>kugle_msgs</depend>
+  <depend>kugle_srvs</depend>
 
 
   <!-- The export tag contains other, unspecified, tags -->

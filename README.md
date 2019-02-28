@@ -43,6 +43,22 @@ The bringup launch includes both the driver (as described below) and the SICK Li
 roslaunch kugle_bringup minimal.launch 
 ```
 
+## Install as service on boot
+A startup script and corresponding service (for starting at boot) for launching the minimal bringup launch file has been made.
+
+Copy the `startup_launch.sh` and `PrepareHostROS.sh` to the home folder. Copy the file `kugle.service` into `/lib/systemd/system` and modify the path to the `startup_launch.sh` script accordingly and rename the user and group to the username on the device if different. Enable the service on boot by running:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable kugle.service
+```
+
+After the service has been installed the driver can be started, stopped or restarted by using:
+```bash
+sudo service kugle start
+sudo service kugle stop
+sudo service kugle restart
+```
+
 ## Launching the driver
 The driver which communicates with the MCU over USB can be launched either on a laptop connected through USB to the MCU or on the onboard connected over USB. Launch the driver by running
 ```bash

@@ -94,6 +94,8 @@ Queue<bool> StoreParametersResponse;
 Queue<bool> CalibrateIMUResponse;
 Queue<bool> RestartControllerResponse;
 
+lspc::ParameterTypes::controllerMode_t currentControllerMode = lspc::ParameterTypes::UNKNOWN_MODE;
+
 std::mutex reconfigureMutex;
 std::shared_ptr<dynamic_reconfigure::Server<kugle_driver::ParametersConfig>> reconfigureServer;
 kugle_driver::ParametersConfig reconfigureConfig;
@@ -266,10 +268,18 @@ std::string ParseControllerMode(lspc::ParameterTypes::controllerMode_t mode)
 {
     if (mode == lspc::ParameterTypes::OFF) return "OFF";
     else if (mode == lspc::ParameterTypes::QUATERNION_CONTROL) return "QUATERNION_CONTROL";
-    else if (mode == lspc::ParameterTypes::ANGULAR_VELOCITY_CONTROL) return "ANGULAR_VELOCITY_CONTROL";
     else if (mode == lspc::ParameterTypes::VELOCITY_CONTROL) return "VELOCITY_CONTROL";
     else if (mode == lspc::ParameterTypes::PATH_FOLLOWING) return "PATH_FOLLOWING";
     else return "UNKNOWN_MODE";
+}
+
+lspc::ParameterTypes::controllerMode_t ParseControllerMode2(std::string mode)
+{
+    if (!mode.compare("OFF")) return lspc::ParameterTypes::OFF;
+    else if (!mode.compare("QUATERNION_CONTROL")) return lspc::ParameterTypes::QUATERNION_CONTROL;
+    else if (!mode.compare("VELOCITY_CONTROL")) return lspc::ParameterTypes::VELOCITY_CONTROL;
+    else if (!mode.compare("PATH_FOLLOWING")) return lspc::ParameterTypes::PATH_FOLLOWING;
+    else return lspc::ParameterTypes::UNKNOWN_MODE;
 }
 
 lspc::ParameterTypes::slidingManifoldType_t ParseManifoldType2(std::string type)
@@ -288,16 +298,6 @@ std::string ParseManifoldType(lspc::ParameterTypes::slidingManifoldType_t type)
     else if (type == lspc::ParameterTypes::OMEGA_INERTIAL_MANIFOLD) return "OMEGA_INERTIAL_MANIFOLD";
     else if (type == lspc::ParameterTypes::OMEGA_BODY_MANIFOLD) return "OMEGA_BODY_MANIFOLD";
     else return "UNKNOWN_MANIFOLD";
-}
-
-lspc::ParameterTypes::controllerMode_t ParseControllerMode2(std::string mode)
-{
-    if (!mode.compare("OFF")) return lspc::ParameterTypes::OFF;
-    else if (!mode.compare("QUATERNION_CONTROL")) return lspc::ParameterTypes::QUATERNION_CONTROL;
-    else if (!mode.compare("ANGULAR_VELOCITY_CONTROL")) return lspc::ParameterTypes::ANGULAR_VELOCITY_CONTROL;
-    else if (!mode.compare("VELOCITY_CONTROL")) return lspc::ParameterTypes::VELOCITY_CONTROL;
-    else if (!mode.compare("PATH_FOLLOWING")) return lspc::ParameterTypes::PATH_FOLLOWING;
-    else return lspc::ParameterTypes::UNKNOWN_MODE;
 }
 
 std::string ParsePowerButtonMode(lspc::ParameterTypes::powerButtonMode_t mode)
@@ -325,6 +325,8 @@ void LSPC_Callback_ControllerInfo(ros::Publisher& pubControllerInfo, const std::
         ROS_DEBUG("Error parsing ControllerInfo message");
         return;
     }
+
+    currentControllerMode = msgRaw->mode;
 
     kugle_msgs::ControllerInfo msg;
     msg.receive_time = ros::Time::now();
@@ -549,7 +551,8 @@ std::string GetFormattedTimestampCurrent()
 }
 
 void ROS_Callback_cmd_vel(const geometry_msgs::Twist::ConstPtr& msg, std::shared_ptr<std::timed_mutex> lspcMutex, std::shared_ptr<lspc::Socket *> lspcObj) {
-    if (!lspcMutex->try_lock_for(std::chrono::milliseconds(1))) return; // could not get lock
+    if (currentControllerMode != lspc::ParameterTypes::VELOCITY_CONTROL) return; // no need to send message over since we are not in mode where the message is used
+    if (!lspcMutex->try_lock_for(std::chrono::milliseconds(100))) return; // could not get lock
 
     if ((*lspcObj)->isOpen()) {
         //ROS_DEBUG_STREAM("Sending cmd_vel to Kugle as both VelocityReference_Heading and AngularVelocityReference_Body");
@@ -574,7 +577,8 @@ void ROS_Callback_cmd_vel(const geometry_msgs::Twist::ConstPtr& msg, std::shared
 }
 
 void ROS_Callback_cmd_vel_inertial(const geometry_msgs::Twist::ConstPtr& msg, std::shared_ptr<std::timed_mutex> lspcMutex, std::shared_ptr<lspc::Socket *> lspcObj) {
-    if (!lspcMutex->try_lock_for(std::chrono::milliseconds(1))) return; // could not get lock
+    if (currentControllerMode != lspc::ParameterTypes::VELOCITY_CONTROL) return; // no need to send message over since we are not in mode where the message is used
+    if (!lspcMutex->try_lock_for(std::chrono::milliseconds(100))) return; // could not get lock
 
     if ((*lspcObj)->isOpen()) {
         //ROS_DEBUG_STREAM("Sending cmd_vel_inertial to Kugle as both VelocityReference_Inertial and AngularVelocityReference_Inertial");
@@ -599,7 +603,8 @@ void ROS_Callback_cmd_vel_inertial(const geometry_msgs::Twist::ConstPtr& msg, st
 }
 
 void ROS_Callback_cmd_quaternion(const geometry_msgs::Quaternion::ConstPtr& msg, std::shared_ptr<std::timed_mutex> lspcMutex, std::shared_ptr<lspc::Socket *> lspcObj) {
-    if (!lspcMutex->try_lock_for(std::chrono::milliseconds(1))) return; // could not get lock
+    if (currentControllerMode != lspc::ParameterTypes::QUATERNION_CONTROL) return; // no need to send message over since we are not in mode where the message is used
+    if (!lspcMutex->try_lock_for(std::chrono::milliseconds(100))) return; // could not get lock
 
     if ((*lspcObj)->isOpen()) {
         //ROS_DEBUG_STREAM("Sending cmd_quaternion to Kugle");
@@ -616,7 +621,8 @@ void ROS_Callback_cmd_quaternion(const geometry_msgs::Quaternion::ConstPtr& msg,
 }
 
 void ROS_Callback_cmd_combined(const kugle_msgs::BalanceControllerReference::ConstPtr& msg, std::shared_ptr<std::timed_mutex> lspcMutex, std::shared_ptr<lspc::Socket *> lspcObj) {
-    if (!lspcMutex->try_lock_for(std::chrono::milliseconds(1))) return; // could not get lock
+    if (currentControllerMode != lspc::ParameterTypes::QUATERNION_CONTROL) return; // no need to send message over since we are not in mode where the message is used
+    if (!lspcMutex->try_lock_for(std::chrono::milliseconds(100))) return; // could not get lock
 
     if ((*lspcObj)->isOpen()) {
         //ROS_DEBUG_STREAM("Sending cmd_quaternion to Kugle");
@@ -637,7 +643,8 @@ void ROS_Callback_cmd_combined(const kugle_msgs::BalanceControllerReference::Con
 }
 
 void ROS_Callback_cmd_combined_inertial(const kugle_msgs::BalanceControllerReference::ConstPtr& msg, std::shared_ptr<std::timed_mutex> lspcMutex, std::shared_ptr<lspc::Socket *> lspcObj) {
-    if (!lspcMutex->try_lock_for(std::chrono::milliseconds(1))) return; // could not get lock
+    if (currentControllerMode != lspc::ParameterTypes::QUATERNION_CONTROL) return; // no need to send message over since we are not in mode where the message is used
+    if (!lspcMutex->try_lock_for(std::chrono::milliseconds(100))) return; // could not get lock
 
     if ((*lspcObj)->isOpen()) {
         //ROS_DEBUG_STREAM("Sending cmd_quaternion to Kugle");

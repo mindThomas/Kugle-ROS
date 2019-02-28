@@ -2,6 +2,7 @@
 <launch>
 
 	<!-- Launch file for Joystick control -->
+  	<env name="ROSCONSOLE_CONFIG_FILE" value="$(find kugle_driver)/config/rosconsole.conf"/>
 
 	<!-- Remember to install "sudo pip install ds4drv" -->
 	<!-- Start "sudo ds4drv" in seperate terminal -->  	
@@ -15,12 +16,23 @@
     		<param name="deadzone" value="0.12" />
  	</node>
 
-	<node name="velocity_mapper" pkg="kugle_misc" type="joystick_velocity_mapper_node" respawn="true">
+	<node name="joystick_mapper" pkg="kugle_misc" type="joystick_mapper_node" respawn="true" output="screen">
 	    	<remap from="cmd_vel" to="cmd_vel" />  <!-- set to "cmd_vel" for control in body/heading frame or "cmd_vel_inertial" for control in inertial frame -->
+	    	<remap from="cmd_combined" to="cmd_combined" /> <!-- quaternion topic used in angle control -->
 	    	<remap from="joy" to="joy" />
+
+    		<param name="angle_mode" type="bool" value="true" />		
+
     		<param name="maximum_linear_velocity" type="double" value="0.5" />
-    		<param name="maximum_angular_velocity" type="double" value="0.5" />
-		<param name="publish_rate" type="int" value="10" />
+    		<param name="rate_limit_linear_velocity" type="double" value="0.5" />
+
+    		<param name="maximum_angular_velocity" type="double" value="1.0" />
+    		<param name="rate_limit_angular_velocity" type="double" value="10.0" />
+
+    		<param name="maximum_angle_degree" type="double" value="5" />
+    		<param name="rate_limit_angle_degree" type="double" value="20" />
+
+		<param name="publish_rate" type="int" value="50" />
  	</node>
 
 

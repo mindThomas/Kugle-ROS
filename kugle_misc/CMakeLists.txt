@@ -14,6 +14,8 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   nav_msgs
   tf
+  kugle_msgs
+  kugle_srvs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -110,7 +112,7 @@ include_directories(${Boost_INCLUDE_DIRS})
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES
-  CATKIN_DEPENDS roscpp std_msgs geometry_msgs sensor_msgs nav_msgs tf
+  CATKIN_DEPENDS roscpp std_msgs geometry_msgs sensor_msgs nav_msgs tf kugle_msgs kugle_srvs
   DEPENDS
 )
 
@@ -170,9 +172,9 @@ add_executable(velocity_controller_node src/velocity_controller_node.cpp)
 add_dependencies(velocity_controller_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(velocity_controller_node QuaternionVelocityControl ${catkin_LIBRARIES})
 
-add_executable(joystick_velocity_mapper_node src/joystick_velocity_mapper_node.cpp)
-add_dependencies(joystick_velocity_mapper_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(joystick_velocity_mapper_node ${catkin_LIBRARIES})
+add_executable(joystick_mapper_node src/joystick_mapper_node.cpp)
+add_dependencies(joystick_mapper_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(joystick_mapper_node ${catkin_LIBRARIES})
 
 
 #############
