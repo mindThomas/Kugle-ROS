@@ -197,7 +197,8 @@ void PublishVelocity(double loop_time, double time_out)
         velocityMsg.angular.z = VelocityReferenceRateLimited.yawVel;
     }
 
-    velocityReferencePub.publish(velocityMsg);
+    if (!AngleControlMode)
+        velocityReferencePub.publish(velocityMsg);
 }
 
 void PublishQuaternion(double loop_time, double time_out)
@@ -238,7 +239,8 @@ void PublishQuaternion(double loop_time, double time_out)
         balanceControllerReferenceMsg.omega.z = VelocityReferenceRateLimited.yawVel;
     }
 
-    balanceControllerReferencePub.publish(balanceControllerReferenceMsg);
+    if (AngleControlMode)
+        balanceControllerReferencePub.publish(balanceControllerReferenceMsg);
 }
 
 int main(int argc, char **argv) {
@@ -289,8 +291,10 @@ int main(int argc, char **argv) {
 	while (ros::ok())
 	{
 		ros::spinOnce(); // walks the callback queue and calls registered callbacks for any outstanding events (incoming msgs, svc reqs, timers)
-        PublishVelocity(1.0/publish_rate, 0.2); // timeout after 200 ms
-        PublishQuaternion(1.0/publish_rate, 0.2); // timeout after 200 ms
+
+        PublishVelocity(1.0/publish_rate, 0.5); // timeout after 500 ms
+        PublishQuaternion(1.0/publish_rate, 0.5); // timeout after 500 ms
+
         loop_rate.sleep();
 	}
 }

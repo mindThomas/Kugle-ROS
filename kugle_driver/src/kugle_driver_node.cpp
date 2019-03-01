@@ -551,7 +551,6 @@ std::string GetFormattedTimestampCurrent()
 }
 
 void ROS_Callback_cmd_vel(const geometry_msgs::Twist::ConstPtr& msg, std::shared_ptr<std::timed_mutex> lspcMutex, std::shared_ptr<lspc::Socket *> lspcObj) {
-    if (currentControllerMode != lspc::ParameterTypes::VELOCITY_CONTROL) return; // no need to send message over since we are not in mode where the message is used
     if (!lspcMutex->try_lock_for(std::chrono::milliseconds(100))) return; // could not get lock
 
     if ((*lspcObj)->isOpen()) {
@@ -577,7 +576,6 @@ void ROS_Callback_cmd_vel(const geometry_msgs::Twist::ConstPtr& msg, std::shared
 }
 
 void ROS_Callback_cmd_vel_inertial(const geometry_msgs::Twist::ConstPtr& msg, std::shared_ptr<std::timed_mutex> lspcMutex, std::shared_ptr<lspc::Socket *> lspcObj) {
-    if (currentControllerMode != lspc::ParameterTypes::VELOCITY_CONTROL) return; // no need to send message over since we are not in mode where the message is used
     if (!lspcMutex->try_lock_for(std::chrono::milliseconds(100))) return; // could not get lock
 
     if ((*lspcObj)->isOpen()) {
@@ -603,7 +601,6 @@ void ROS_Callback_cmd_vel_inertial(const geometry_msgs::Twist::ConstPtr& msg, st
 }
 
 void ROS_Callback_cmd_quaternion(const geometry_msgs::Quaternion::ConstPtr& msg, std::shared_ptr<std::timed_mutex> lspcMutex, std::shared_ptr<lspc::Socket *> lspcObj) {
-    if (currentControllerMode != lspc::ParameterTypes::QUATERNION_CONTROL) return; // no need to send message over since we are not in mode where the message is used
     if (!lspcMutex->try_lock_for(std::chrono::milliseconds(100))) return; // could not get lock
 
     if ((*lspcObj)->isOpen()) {
@@ -621,7 +618,6 @@ void ROS_Callback_cmd_quaternion(const geometry_msgs::Quaternion::ConstPtr& msg,
 }
 
 void ROS_Callback_cmd_combined(const kugle_msgs::BalanceControllerReference::ConstPtr& msg, std::shared_ptr<std::timed_mutex> lspcMutex, std::shared_ptr<lspc::Socket *> lspcObj) {
-    if (currentControllerMode != lspc::ParameterTypes::QUATERNION_CONTROL) return; // no need to send message over since we are not in mode where the message is used
     if (!lspcMutex->try_lock_for(std::chrono::milliseconds(100))) return; // could not get lock
 
     if ((*lspcObj)->isOpen()) {
@@ -643,7 +639,6 @@ void ROS_Callback_cmd_combined(const kugle_msgs::BalanceControllerReference::Con
 }
 
 void ROS_Callback_cmd_combined_inertial(const kugle_msgs::BalanceControllerReference::ConstPtr& msg, std::shared_ptr<std::timed_mutex> lspcMutex, std::shared_ptr<lspc::Socket *> lspcObj) {
-    if (currentControllerMode != lspc::ParameterTypes::QUATERNION_CONTROL) return; // no need to send message over since we are not in mode where the message is used
     if (!lspcMutex->try_lock_for(std::chrono::milliseconds(100))) return; // could not get lock
 
     if ((*lspcObj)->isOpen()) {
@@ -811,6 +806,10 @@ bool ParseParamTypeAndID(const std::string in_type, const std::string in_param, 
             out_param = lspc::ParameterLookup::VelocityController_IntegralGain;
             out_valueType = lspc::ParameterLookup::_float;
         }
+        else if (!in_param.compare("VelocityController_AngleLPFtau")) {
+            out_param = lspc::ParameterLookup::VelocityController_AngleLPFtau;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
         else {
             ROS_DEBUG("Parameter lookup: Parameter not found");
             return false;
@@ -844,6 +843,10 @@ bool ParseParamTypeAndID(const std::string in_type, const std::string in_param, 
         }
         else if (!in_param.compare("EnableVelocityLPF")) {
             out_param = lspc::ParameterLookup::EnableVelocityLPF;
+            out_valueType = lspc::ParameterLookup::_bool;
+        }
+        else if (!in_param.compare("EnableWheelSlipDetector")) {
+            out_param = lspc::ParameterLookup::EnableWheelSlipDetector;
             out_valueType = lspc::ParameterLookup::_bool;
         }
         else if (!in_param.compare("EstimateCOM")) {
@@ -1495,6 +1498,7 @@ void reconfigureCallback(kugle_driver::ParametersConfig &config, uint32_t level,
     if (config.VelocityController_MaxIntegralCorrection != reconfigureConfig.VelocityController_MaxIntegralCorrection) reconfigureModifyParameter("controller", "VelocityController_MaxIntegralCorrection", std::to_string(config.VelocityController_MaxIntegralCorrection), lspcMutex, lspcObj);
     if (config.VelocityController_VelocityClamp != reconfigureConfig.VelocityController_VelocityClamp) reconfigureModifyParameter("controller", "VelocityController_VelocityClamp", std::to_string(config.VelocityController_VelocityClamp), lspcMutex, lspcObj);
     if (config.VelocityController_IntegralGain != reconfigureConfig.VelocityController_IntegralGain) reconfigureModifyParameter("controller", "VelocityController_IntegralGain", std::to_string(config.VelocityController_IntegralGain), lspcMutex, lspcObj);
+    if (config.VelocityController_AngleLPFtau != reconfigureConfig.VelocityController_AngleLPFtau) reconfigureModifyParameter("controller", "VelocityController_AngleLPFtau", std::to_string(config.VelocityController_AngleLPFtau), lspcMutex, lspcObj);
 
     if (config.UseCoRvelocity != reconfigureConfig.UseCoRvelocity) reconfigureModifyParameter("estimator", "UseCoRvelocity", config.UseCoRvelocity ? "true" : "false", lspcMutex, lspcObj);
     if (config.sigma2_bias != reconfigureConfig.sigma2_bias) reconfigureModifyParameter("estimator", "sigma2_bias", to_string_with_precision(powf(10, -config.sigma2_bias),10), lspcMutex, lspcObj);
@@ -1502,6 +1506,7 @@ void reconfigureCallback(kugle_driver::ParametersConfig &config, uint32_t level,
     if (config.sigma2_heading != reconfigureConfig.sigma2_heading) reconfigureModifyParameter("estimator", "sigma2_heading", to_string_with_precision(powf(10, -config.sigma2_heading),10), lspcMutex, lspcObj);
     if (config.GyroscopeTrustFactor != reconfigureConfig.GyroscopeTrustFactor) reconfigureModifyParameter("estimator", "GyroscopeTrustFactor", std::to_string(config.GyroscopeTrustFactor), lspcMutex, lspcObj);
     if (config.EnableVelocityLPF != reconfigureConfig.EnableVelocityLPF) reconfigureModifyParameter("estimator", "EnableVelocityLPF", config.EnableVelocityLPF ? "true" : "false", lspcMutex, lspcObj);
+    if (config.EnableWheelSlipDetector != reconfigureConfig.EnableWheelSlipDetector) reconfigureModifyParameter("estimator", "EnableWheelSlipDetector", config.EnableWheelSlipDetector ? "true" : "false", lspcMutex, lspcObj);
 
     if (config.l != reconfigureConfig.l) reconfigureModifyParameter("model", "l", std::to_string(config.l), lspcMutex, lspcObj);
     if (config.CoR != reconfigureConfig.CoR) reconfigureModifyParameter("model", "CoR", std::to_string(config.CoR), lspcMutex, lspcObj);
@@ -1577,6 +1582,7 @@ void LoadParamsIntoReconfigure(std::shared_ptr<std::timed_mutex> lspcMutex, std:
     reconfigureConfig.VelocityController_MaxIntegralCorrection = Parse2RoundedFloat(reconfigureRetrieveParameter("controller", "VelocityController_MaxIntegralCorrection", lspcMutex, lspcObj));
     reconfigureConfig.VelocityController_VelocityClamp = Parse2RoundedFloat(reconfigureRetrieveParameter("controller", "VelocityController_VelocityClamp", lspcMutex, lspcObj));
     reconfigureConfig.VelocityController_IntegralGain = Parse2RoundedFloat(reconfigureRetrieveParameter("controller", "VelocityController_IntegralGain", lspcMutex, lspcObj));
+    reconfigureConfig.VelocityController_AngleLPFtau = Parse2RoundedFloat(reconfigureRetrieveParameter("controller", "VelocityController_AngleLPFtau", lspcMutex, lspcObj));
 
     reconfigureConfig.UseCoRvelocity = Parse2Bool(reconfigureRetrieveParameter("estimator", "UseCoRvelocity", lspcMutex, lspcObj));
 
@@ -1592,6 +1598,7 @@ void LoadParamsIntoReconfigure(std::shared_ptr<std::timed_mutex> lspcMutex, std:
     } catch (...)  {}
     reconfigureConfig.GyroscopeTrustFactor = Parse2RoundedFloat(reconfigureRetrieveParameter("estimator", "GyroscopeTrustFactor", lspcMutex, lspcObj));
     reconfigureConfig.EnableVelocityLPF = Parse2Bool(reconfigureRetrieveParameter("estimator", "EnableVelocityLPF", lspcMutex, lspcObj));
+    reconfigureConfig.EnableWheelSlipDetector = Parse2Bool(reconfigureRetrieveParameter("estimator", "EnableWheelSlipDetector", lspcMutex, lspcObj));
 
     reconfigureConfig.l = Parse2RoundedFloat(reconfigureRetrieveParameter("model", "l", lspcMutex, lspcObj));
     reconfigureConfig.CoR = Parse2RoundedFloat(reconfigureRetrieveParameter("model", "CoR", lspcMutex, lspcObj));
