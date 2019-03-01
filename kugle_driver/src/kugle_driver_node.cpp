@@ -810,6 +810,14 @@ bool ParseParamTypeAndID(const std::string in_type, const std::string in_param, 
             out_param = lspc::ParameterLookup::VelocityController_AngleLPFtau;
             out_valueType = lspc::ParameterLookup::_float;
         }
+        else if (!in_param.compare("VelocityController_OmegaLPFtau")) {
+            out_param = lspc::ParameterLookup::VelocityController_OmegaLPFtau;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+        else if (!in_param.compare("VelocityController_UseOmegaRef")) {
+            out_param = lspc::ParameterLookup::VelocityController_UseOmegaRef;
+            out_valueType = lspc::ParameterLookup::_bool;
+        }
         else {
             ROS_DEBUG("Parameter lookup: Parameter not found");
             return false;
@@ -1499,6 +1507,8 @@ void reconfigureCallback(kugle_driver::ParametersConfig &config, uint32_t level,
     if (config.VelocityController_VelocityClamp != reconfigureConfig.VelocityController_VelocityClamp) reconfigureModifyParameter("controller", "VelocityController_VelocityClamp", std::to_string(config.VelocityController_VelocityClamp), lspcMutex, lspcObj);
     if (config.VelocityController_IntegralGain != reconfigureConfig.VelocityController_IntegralGain) reconfigureModifyParameter("controller", "VelocityController_IntegralGain", std::to_string(config.VelocityController_IntegralGain), lspcMutex, lspcObj);
     if (config.VelocityController_AngleLPFtau != reconfigureConfig.VelocityController_AngleLPFtau) reconfigureModifyParameter("controller", "VelocityController_AngleLPFtau", std::to_string(config.VelocityController_AngleLPFtau), lspcMutex, lspcObj);
+    if (config.VelocityController_OmegaLPFtau != reconfigureConfig.VelocityController_OmegaLPFtau) reconfigureModifyParameter("controller", "VelocityController_OmegaLPFtau", std::to_string(config.VelocityController_OmegaLPFtau), lspcMutex, lspcObj);
+    if (config.VelocityController_UseOmegaRef != reconfigureConfig.VelocityController_UseOmegaRef) reconfigureModifyParameter("controller", "VelocityController_UseOmegaRef", config.VelocityController_UseOmegaRef ? "true" : "false", lspcMutex, lspcObj);
 
     if (config.UseCoRvelocity != reconfigureConfig.UseCoRvelocity) reconfigureModifyParameter("estimator", "UseCoRvelocity", config.UseCoRvelocity ? "true" : "false", lspcMutex, lspcObj);
     if (config.sigma2_bias != reconfigureConfig.sigma2_bias) reconfigureModifyParameter("estimator", "sigma2_bias", to_string_with_precision(powf(10, -config.sigma2_bias),10), lspcMutex, lspcObj);
@@ -1583,6 +1593,8 @@ void LoadParamsIntoReconfigure(std::shared_ptr<std::timed_mutex> lspcMutex, std:
     reconfigureConfig.VelocityController_VelocityClamp = Parse2RoundedFloat(reconfigureRetrieveParameter("controller", "VelocityController_VelocityClamp", lspcMutex, lspcObj));
     reconfigureConfig.VelocityController_IntegralGain = Parse2RoundedFloat(reconfigureRetrieveParameter("controller", "VelocityController_IntegralGain", lspcMutex, lspcObj));
     reconfigureConfig.VelocityController_AngleLPFtau = Parse2RoundedFloat(reconfigureRetrieveParameter("controller", "VelocityController_AngleLPFtau", lspcMutex, lspcObj));
+    reconfigureConfig.VelocityController_OmegaLPFtau = Parse2RoundedFloat(reconfigureRetrieveParameter("controller", "VelocityController_OmegaLPFtau", lspcMutex, lspcObj));
+    reconfigureConfig.VelocityController_UseOmegaRef = Parse2Bool(reconfigureRetrieveParameter("controller", "VelocityController_UseOmegaRef", lspcMutex, lspcObj));
 
     reconfigureConfig.UseCoRvelocity = Parse2Bool(reconfigureRetrieveParameter("estimator", "UseCoRvelocity", lspcMutex, lspcObj));
 
