@@ -2,7 +2,7 @@
 <launch>
 
 	<include file="$(find kugle_gazebo)/launch/gazebo.launch">
-		<arg name="gui" value="false"/> <!-- Choose to spawn the Gazebo GUI or run the simulation "headless -->
+		<arg name="gui" value="true"/> <!-- Choose to spawn the Gazebo GUI or run the simulation "headless -->
 	</include>
 
 	<!-- Convert depth image from RGBD camera into registered (hence colored) pointcloud -->

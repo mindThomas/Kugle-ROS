@@ -126,6 +126,8 @@ namespace lspc
             sigma2_omega,
             sigma2_heading,
             GyroscopeTrustFactor,
+            Var_COM,
+            eta_encoder,
             QEKF_P_init_diagonal,
             VelocityEstimator_P_init_diagonal,
             COMEstimator_P_init_diagonal
@@ -184,8 +186,8 @@ namespace lspc
 
         typedef enum: uint8_t {
             POWER_OFF = 0x00, // default
-            START_STOP_QUATERNION_CONTROLLER,
-            START_STOP_VELOCITY_CONTROLLER,
+            START_STOP_QUATERNION_CONTROL,
+            START_STOP_VELOCITY_CONTROL,
             UNKNOWN_BUTTON_MODE = 0xFF
         } powerButtonMode_t;
 

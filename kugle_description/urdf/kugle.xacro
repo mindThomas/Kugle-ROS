@@ -69,6 +69,6 @@
 	            </geometry>
 		</visual>
 	</link>
-	<xacro:fixed_offset_joint_rpy parent="base_link" child="realsense_camera_link" offset="0.05 0 1.11" rpy="00 0.25 0" />
+	<xacro:fixed_offset_joint_rpy parent="base_link" child="realsense_camera_link" offset="0.05 0 1.11" rpy="0 0.25 0" />
 
 </robot>

@@ -1,6 +1,8 @@
 # Kugle-ROS
 ROS workspace for the Kugle robot including packages for high-level navigation tasks including localization/SLAM with LiDAR, path planning and obstacle avoidance
 
+The repository is structured according to general ROS practices, see e.g. https://github.com/leggedrobotics/ros_best_practices/wiki
+
 # Install tool
 ```bash
 sudo apt-get install python-catkin-tools
