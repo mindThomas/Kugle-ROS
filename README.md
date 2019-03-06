@@ -73,7 +73,7 @@ An RVIZ visualization of the robot can be launched by running
 roslaunch kugle_launch rviz.launch
 ```
 
-## kugle_driver CPU load
+## kugle_driver MCU RTOS load
 When the `kugle_driver` is running the MCU load is published on the topic `mcu_load` which can be displayed by running
 ```bash
 rostopic echo /mcu_load -p
