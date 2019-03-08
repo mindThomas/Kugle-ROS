@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<launch>
+
+	<node name="rviz_visualizer" pkg="rviz" type="rviz" required="true" args="-d $(find kugle_description)/rviz/navigation.rviz"/>
+
+</launch>

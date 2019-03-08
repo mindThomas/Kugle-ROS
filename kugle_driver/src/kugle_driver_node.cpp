@@ -696,7 +696,7 @@ bool ParseParamTypeAndID(const std::string in_type, const std::string in_param, 
             out_valueType = lspc::ParameterLookup::_bool;
         }
         else {
-            ROS_DEBUG("Parameter lookup: Parameter not found");
+            ROS_DEBUG("Parameter lookup: Parameter not found (type=%s, param=%s)", in_type.c_str(), in_param.c_str());
             return false;
         }
     }
@@ -723,7 +723,7 @@ bool ParseParamTypeAndID(const std::string in_type, const std::string in_param, 
             out_valueType = lspc::ParameterLookup::_uint8;
         }
         else {
-            ROS_DEBUG("Parameter lookup: Parameter not found");
+            ROS_DEBUG("Parameter lookup: Parameter not found (type=%s, param=%s)", in_type.c_str(), in_param.c_str());
             return false;
         }
     }
@@ -830,7 +830,7 @@ bool ParseParamTypeAndID(const std::string in_type, const std::string in_param, 
             out_valueType = lspc::ParameterLookup::_bool;
         }
         else {
-            ROS_DEBUG("Parameter lookup: Parameter not found");
+            ROS_DEBUG("Parameter lookup: Parameter not found (type=%s, param=%s)", in_type.c_str(), in_param.c_str());
             return false;
         }
     }
@@ -913,7 +913,7 @@ bool ParseParamTypeAndID(const std::string in_type, const std::string in_param, 
             out_valueType = lspc::ParameterLookup::_float;
         }
         else {
-            ROS_DEBUG("Parameter lookup: Parameter not found");
+            ROS_DEBUG("Parameter lookup: Parameter not found (type=%s, param=%s)", in_type.c_str(), in_param.c_str());
             return false;
         }
     }
@@ -952,7 +952,7 @@ bool ParseParamTypeAndID(const std::string in_type, const std::string in_param, 
             out_valueType = lspc::ParameterLookup::_float;
         }
         else {
-            ROS_DEBUG("Parameter lookup: Parameter not found");
+            ROS_DEBUG("Parameter lookup: Parameter not found (type=%s, param=%s)", in_type.c_str(), in_param.c_str());
             return false;
         }
     }
@@ -967,7 +967,7 @@ bool ParseParamTypeAndID(const std::string in_type, const std::string in_param, 
             out_valueType = lspc::ParameterLookup::_float;
         }
         else {
-            ROS_DEBUG("Parameter lookup: Parameter not found");
+            ROS_DEBUG("Parameter lookup: Parameter not found (type=%s, param=%s)", in_type.c_str(), in_param.c_str());
             return false;
         }
     }
@@ -1532,7 +1532,7 @@ void reconfigureCallback(kugle_driver::ParametersConfig &config, uint32_t level,
         config.epsilon_z = config.epsilon;
     }
 
-    if (config.AngularVelocityClampsEnabled != reconfigureConfig.AngularVelocityClampsEnabled) reconfigureModifyParameter("estimator", "AngularVelocityClampsEnabled", config.AngularVelocityClampsEnabled ? "true" : "false", lspcMutex, lspcObj);
+    if (config.AngularVelocityClampsEnabled != reconfigureConfig.AngularVelocityClampsEnabled) reconfigureModifyParameter("controller", "AngularVelocityClampsEnabled", config.AngularVelocityClampsEnabled ? "true" : "false", lspcMutex, lspcObj);
     if (config.AngularVelocityClamp_x != reconfigureConfig.AngularVelocityClamp_x) reconfigureModifyParameter("controller", "AngularVelocityClamps", std::to_string(config.AngularVelocityClamp_x) + " " + std::to_string(config.AngularVelocityClamp_y) + " " + std::to_string(config.AngularVelocityClamp_z), lspcMutex, lspcObj);
     if (config.AngularVelocityClamp_y != reconfigureConfig.AngularVelocityClamp_y) reconfigureModifyParameter("controller", "AngularVelocityClamps", std::to_string(config.AngularVelocityClamp_x) + " " + std::to_string(config.AngularVelocityClamp_y) + " " + std::to_string(config.AngularVelocityClamp_z), lspcMutex, lspcObj);
     if (config.AngularVelocityClamp_z != reconfigureConfig.AngularVelocityClamp_z) reconfigureModifyParameter("controller", "AngularVelocityClamps", std::to_string(config.AngularVelocityClamp_x) + " " + std::to_string(config.AngularVelocityClamp_y) + " " + std::to_string(config.AngularVelocityClamp_z), lspcMutex, lspcObj);
@@ -1643,7 +1643,7 @@ void LoadParamsIntoReconfigure(std::shared_ptr<std::timed_mutex> lspcMutex, std:
             reconfigureConfig.AngularVelocityClamp_z = Parse2RoundedFloat(values.at(2));
         }
     }
-    reconfigureConfig.AngularVelocityClampsEnabled = Parse2Bool(reconfigureRetrieveParameter("estimator", "AngularVelocityClampsEnabled", lspcMutex, lspcObj));
+    reconfigureConfig.AngularVelocityClampsEnabled = Parse2Bool(reconfigureRetrieveParameter("controller", "AngularVelocityClampsEnabled", lspcMutex, lspcObj));
 
     reconfigureConfig.VelocityControl_AccelerationLimit = Parse2RoundedFloat(reconfigureRetrieveParameter("controller", "VelocityControl_AccelerationLimit", lspcMutex, lspcObj));
     reconfigureConfig.VelocityControl_UseOmegaRef = Parse2Bool(reconfigureRetrieveParameter("controller", "VelocityControl_UseOmegaRef", lspcMutex, lspcObj));

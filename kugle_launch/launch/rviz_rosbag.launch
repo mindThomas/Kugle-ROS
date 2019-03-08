@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<launch>
+
+	<node name="rviz_visualizer" pkg="rviz" type="rviz" required="true" args="-d $(find kugle_description)/rviz/tf_display.rviz"/>
+
+	<param name="robot_description" command="$(find xacro)/xacro '$(find kugle_description)/urdf/kugle.xacro'" />
+
+</launch>

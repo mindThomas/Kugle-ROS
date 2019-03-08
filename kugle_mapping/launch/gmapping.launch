@@ -43,9 +43,9 @@
 		<param name="srt" value="0.02"/>
 		<param name="str" value="0.01"/>
 		<param name="stt" value="0.02"/>
-		<param name="linearUpdate" value="0.5"/>
-		<param name="angularUpdate" value="0.436"/>
-		<param name="temporalUpdate" value="-1.0"/>
+		<param name="linearUpdate" value="0.2"/>
+		<param name="angularUpdate" value="0.25"/>
+		<param name="temporalUpdate" value="5"/>
 		<param name="resampleThreshold" value="0.5"/>
 		<param name="particles" value="80"/>
 		<!--
@@ -65,9 +65,10 @@
 		<param name="llsamplestep" value="0.01"/>
 		<param name="lasamplerange" value="0.005"/>
 		<param name="lasamplestep" value="0.005"/>
-		<remap from="scan" to="$(arg laser_topic)"/>
+		<remap from="scan" to="$(arg left_laser_topic)"/>
 	</node>
 
+<!--
 	<node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen">
 		<rosparam file="$(find kugle_navigation)/param/costmap_common_params.yaml" command="load" ns="global_costmap" />
 		<rosparam file="$(find kugle_navigation)/param/costmap_common_params.yaml" command="load" ns="local_costmap" />
@@ -78,7 +79,7 @@
 		<rosparam file="$(find kugle_navigation)/param/global_planner_params.yaml" command="load" />
 		<rosparam file="$(find kugle_navigation)/param/navfn_global_planner_params.yaml" command="load" />
 
-		<!-- reset frame_id parameters using user input data -->
+		reset frame_id parameters using user input data
 		<param name="global_costmap/global_frame" value="$(arg global_frame_id)"/>
 		<param name="global_costmap/robot_base_frame" value="$(arg base_frame_id)"/>
 		<param name="local_costmap/global_frame" value="$(arg odom_frame_id)"/>
@@ -88,5 +89,6 @@
 		<remap from="odom" to="$(arg odom_topic)"/>
 		<remap from="scan" to="$(arg laser_topic)"/>
 	</node>
+-->
 
 </launch>
