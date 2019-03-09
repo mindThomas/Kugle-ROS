@@ -780,6 +780,26 @@ bool ParseParamTypeAndID(const std::string in_type, const std::string in_param, 
             out_param = lspc::ParameterLookup::Kz;
             out_valueType = lspc::ParameterLookup::_float;
         }
+        else if (!in_param.compare("Kv_x")) {
+            out_param = lspc::ParameterLookup::Kv_x;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+        else if (!in_param.compare("Kv_y")) {
+            out_param = lspc::ParameterLookup::Kv_y;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+        else if (!in_param.compare("Kvi_x")) {
+            out_param = lspc::ParameterLookup::Kvi_x;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+        else if (!in_param.compare("Kvi_y")) {
+            out_param = lspc::ParameterLookup::Kvi_y;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+        else if (!in_param.compare("gamma")) {
+            out_param = lspc::ParameterLookup::gamma;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
         else if (!in_param.compare("AngularVelocityClamps")) {
             out_param = lspc::ParameterLookup::AngularVelocityClamps;
             out_valueType = lspc::ParameterLookup::_float;
@@ -795,6 +815,10 @@ bool ParseParamTypeAndID(const std::string in_type, const std::string in_param, 
         }
         else if (!in_param.compare("DisableQdotInEquivalentControl")) {
             out_param = lspc::ParameterLookup::DisableQdotInEquivalentControl;
+            out_valueType = lspc::ParameterLookup::_bool;
+        }
+        else if (!in_param.compare("DisableOmegaXYInEquivalentControl")) {
+            out_param = lspc::ParameterLookup::DisableOmegaXYInEquivalentControl;
             out_valueType = lspc::ParameterLookup::_bool;
         }
         else if (!in_param.compare("VelocityControl_AccelerationLimit")) {
@@ -1499,6 +1523,7 @@ void reconfigureCallback(kugle_driver::ParametersConfig &config, uint32_t level,
     if (config.mode != reconfigureConfig.mode) reconfigureModifyParameter("controller", "mode", std::to_string(config.mode), lspcMutex, lspcObj);
     if (config.DisableQdot != reconfigureConfig.DisableQdot) reconfigureModifyParameter("controller", "DisableQdot", config.DisableQdot ? "true" : "false", lspcMutex, lspcObj);
     if (config.DisableQdotInEquivalentControl != reconfigureConfig.DisableQdotInEquivalentControl) reconfigureModifyParameter("controller", "DisableQdotInEquivalentControl", config.DisableQdotInEquivalentControl ? "true" : "false", lspcMutex, lspcObj);
+    if (config.DisableOmegaXYInEquivalentControl != reconfigureConfig.DisableOmegaXYInEquivalentControl) reconfigureModifyParameter("controller", "DisableOmegaXYInEquivalentControl", config.DisableOmegaXYInEquivalentControl ? "true" : "false", lspcMutex, lspcObj);
     if (config.ManifoldType != reconfigureConfig.ManifoldType) reconfigureModifyParameter("controller", "ManifoldType", std::to_string(config.ManifoldType), lspcMutex, lspcObj);
     if (config.EquivalentControl != reconfigureConfig.EquivalentControl) reconfigureModifyParameter("controller", "EquivalentControl", config.EquivalentControl ? "true" : "false", lspcMutex, lspcObj);
 
@@ -1531,6 +1556,12 @@ void reconfigureCallback(kugle_driver::ParametersConfig &config, uint32_t level,
         config.epsilon_y = config.epsilon;
         config.epsilon_z = config.epsilon;
     }
+
+    if (config.Kv_x != reconfigureConfig.Kv_x) reconfigureModifyParameter("controller", "Kv_x", std::to_string(config.Kv_x), lspcMutex, lspcObj);
+    if (config.Kv_y != reconfigureConfig.Kv_y) reconfigureModifyParameter("controller", "Kv_y", std::to_string(config.Kv_y), lspcMutex, lspcObj);
+    if (config.Kvi_x != reconfigureConfig.Kvi_x) reconfigureModifyParameter("controller", "Kvi_x", std::to_string(config.Kvi_x), lspcMutex, lspcObj);
+    if (config.Kvi_y != reconfigureConfig.Kvi_y) reconfigureModifyParameter("controller", "Kvi_y", std::to_string(config.Kvi_y), lspcMutex, lspcObj);
+    if (config.gamma != reconfigureConfig.gamma) reconfigureModifyParameter("controller", "gamma", std::to_string(config.gamma), lspcMutex, lspcObj);
 
     if (config.AngularVelocityClampsEnabled != reconfigureConfig.AngularVelocityClampsEnabled) reconfigureModifyParameter("controller", "AngularVelocityClampsEnabled", config.AngularVelocityClampsEnabled ? "true" : "false", lspcMutex, lspcObj);
     if (config.AngularVelocityClamp_x != reconfigureConfig.AngularVelocityClamp_x) reconfigureModifyParameter("controller", "AngularVelocityClamps", std::to_string(config.AngularVelocityClamp_x) + " " + std::to_string(config.AngularVelocityClamp_y) + " " + std::to_string(config.AngularVelocityClamp_z), lspcMutex, lspcObj);
@@ -1589,6 +1620,7 @@ void LoadParamsIntoReconfigure(std::shared_ptr<std::timed_mutex> lspcMutex, std:
     reconfigureConfig.type = int(ParseControllerType2(reconfigureRetrieveParameter("controller", "type", lspcMutex, lspcObj)));
     reconfigureConfig.DisableQdot = Parse2Bool(reconfigureRetrieveParameter("controller", "DisableQdot", lspcMutex, lspcObj));
     reconfigureConfig.DisableQdotInEquivalentControl = Parse2Bool(reconfigureRetrieveParameter("controller", "DisableQdotInEquivalentControl", lspcMutex, lspcObj));
+    reconfigureConfig.DisableOmegaXYInEquivalentControl = Parse2Bool(reconfigureRetrieveParameter("controller", "DisableOmegaXYInEquivalentControl", lspcMutex, lspcObj));
     reconfigureConfig.ManifoldType = int(ParseManifoldType2(reconfigureRetrieveParameter("controller", "ManifoldType", lspcMutex, lspcObj)));
     reconfigureConfig.EquivalentControl = Parse2Bool(reconfigureRetrieveParameter("controller", "EquivalentControl", lspcMutex, lspcObj));
 
@@ -1630,6 +1662,12 @@ void LoadParamsIntoReconfigure(std::shared_ptr<std::timed_mutex> lspcMutex, std:
             reconfigureConfig.epsilon_z = Parse2RoundedFloat(values.at(2));
         }
     }
+
+    reconfigureConfig.Kv_x = Parse2RoundedFloat(reconfigureRetrieveParameter("controller", "Kv_x", lspcMutex, lspcObj));
+    reconfigureConfig.Kv_y = Parse2RoundedFloat(reconfigureRetrieveParameter("controller", "Kv_y", lspcMutex, lspcObj));
+    reconfigureConfig.Kvi_x = Parse2RoundedFloat(reconfigureRetrieveParameter("controller", "Kvi_x", lspcMutex, lspcObj));
+    reconfigureConfig.Kvi_y = Parse2RoundedFloat(reconfigureRetrieveParameter("controller", "Kvi_y", lspcMutex, lspcObj));
+    reconfigureConfig.gamma = Parse2RoundedFloat(reconfigureRetrieveParameter("controller", "gamma", lspcMutex, lspcObj));
 
     // Load angular velocity clamps
     {
