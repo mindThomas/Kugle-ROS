@@ -900,16 +900,8 @@ bool ParseParamTypeAndID(const std::string in_type, const std::string in_param, 
             out_param = lspc::ParameterLookup::EstimateCOM;
             out_valueType = lspc::ParameterLookup::_bool;
         }
-        else if (!in_param.compare("UseTiltForVelocityPrediction")) {
-            out_param = lspc::ParameterLookup::UseTiltForVelocityPrediction;
-            out_valueType = lspc::ParameterLookup::_bool;
-        }
         else if (!in_param.compare("UseQdotInVelocityEstimator")) {
             out_param = lspc::ParameterLookup::UseQdotInVelocityEstimator;
-            out_valueType = lspc::ParameterLookup::_bool;
-        }
-        else if (!in_param.compare("UseCOMestimateInVelocityEstimator")) {
-            out_param = lspc::ParameterLookup::UseCOMestimateInVelocityEstimator;
             out_valueType = lspc::ParameterLookup::_bool;
         }
         else if (!in_param.compare("sigma2_bias")) {
@@ -928,12 +920,20 @@ bool ParseParamTypeAndID(const std::string in_type, const std::string in_param, 
             out_param = lspc::ParameterLookup::GyroscopeTrustFactor;
             out_valueType = lspc::ParameterLookup::_float;
         }
-        else if (!in_param.compare("Var_COM")) {
-            out_param = lspc::ParameterLookup::Var_COM;
-            out_valueType = lspc::ParameterLookup::_float;
-        }
         else if (!in_param.compare("eta_encoder")) {
             out_param = lspc::ParameterLookup::eta_encoder;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+        else if (!in_param.compare("eta_accelerometer")) {
+            out_param = lspc::ParameterLookup::eta_accelerometer;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+        else if (!in_param.compare("var_acc_bias")) {
+            out_param = lspc::ParameterLookup::var_acc_bias;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+        else if (!in_param.compare("var_acceleration")) {
+            out_param = lspc::ParameterLookup::var_acceleration;
             out_valueType = lspc::ParameterLookup::_float;
         }
         else {
@@ -1583,15 +1583,15 @@ void reconfigureCallback(kugle_driver::ParametersConfig &config, uint32_t level,
     if (config.sigma2_heading != reconfigureConfig.sigma2_heading) reconfigureModifyParameter("estimator", "sigma2_heading", to_string_with_precision(powf(10, -config.sigma2_heading),10), lspcMutex, lspcObj);
     if (config.SensorDrivenQEKF != reconfigureConfig.SensorDrivenQEKF) reconfigureModifyParameter("estimator", "SensorDrivenQEKF", config.SensorDrivenQEKF ? "true" : "false", lspcMutex, lspcObj);
     if (config.EstimateBias != reconfigureConfig.EstimateBias) reconfigureModifyParameter("estimator", "EstimateBias", config.EstimateBias ? "true" : "false", lspcMutex, lspcObj);
-    if (config.Var_COM != reconfigureConfig.Var_COM) reconfigureModifyParameter("estimator", "Var_COM", to_string_with_precision(powf(10, -config.Var_COM),10), lspcMutex, lspcObj);
     if (config.GyroscopeTrustFactor != reconfigureConfig.GyroscopeTrustFactor) reconfigureModifyParameter("estimator", "GyroscopeTrustFactor", std::to_string(config.GyroscopeTrustFactor), lspcMutex, lspcObj);
-    if (config.eta_encoder != reconfigureConfig.eta_encoder) reconfigureModifyParameter("estimator", "eta_encoder", std::to_string(config.eta_encoder), lspcMutex, lspcObj);
     if (config.EnableVelocityLPF != reconfigureConfig.EnableVelocityLPF) reconfigureModifyParameter("estimator", "EnableVelocityLPF", config.EnableVelocityLPF ? "true" : "false", lspcMutex, lspcObj);
     if (config.EnableWheelSlipDetector != reconfigureConfig.EnableWheelSlipDetector) reconfigureModifyParameter("estimator", "EnableWheelSlipDetector", config.EnableWheelSlipDetector ? "true" : "false", lspcMutex, lspcObj);
     if (config.UseVelocityEstimator != reconfigureConfig.UseVelocityEstimator) reconfigureModifyParameter("estimator", "UseVelocityEstimator", config.UseVelocityEstimator ? "true" : "false", lspcMutex, lspcObj);
-    if (config.UseTiltForVelocityPrediction != reconfigureConfig.UseTiltForVelocityPrediction) reconfigureModifyParameter("estimator", "UseTiltForVelocityPrediction", config.UseTiltForVelocityPrediction ? "true" : "false", lspcMutex, lspcObj);
     if (config.UseQdotInVelocityEstimator != reconfigureConfig.UseQdotInVelocityEstimator) reconfigureModifyParameter("estimator", "UseQdotInVelocityEstimator", config.UseQdotInVelocityEstimator ? "true" : "false", lspcMutex, lspcObj);
-    if (config.UseCOMestimateInVelocityEstimator != reconfigureConfig.UseCOMestimateInVelocityEstimator) reconfigureModifyParameter("estimator", "UseCOMestimateInVelocityEstimator", config.UseCOMestimateInVelocityEstimator ? "true" : "false", lspcMutex, lspcObj);
+    if (config.eta_encoder != reconfigureConfig.eta_encoder) reconfigureModifyParameter("estimator", "eta_encoder", std::to_string(config.eta_encoder), lspcMutex, lspcObj);
+    if (config.eta_accelerometer != reconfigureConfig.eta_accelerometer) reconfigureModifyParameter("estimator", "eta_accelerometer", std::to_string(config.eta_accelerometer), lspcMutex, lspcObj);
+    if (config.var_acc_bias != reconfigureConfig.var_acc_bias) reconfigureModifyParameter("estimator", "var_acc_bias", to_string_with_precision(powf(10, -config.var_acc_bias),10), lspcMutex, lspcObj);
+    if (config.var_acceleration != reconfigureConfig.var_acceleration) reconfigureModifyParameter("estimator", "var_acceleration", to_string_with_precision(powf(10, -config.var_acceleration),10), lspcMutex, lspcObj);
 
     if (config.l != reconfigureConfig.l) reconfigureModifyParameter("model", "l", std::to_string(config.l), lspcMutex, lspcObj);
     if (config.CoR != reconfigureConfig.CoR) reconfigureModifyParameter("model", "CoR", std::to_string(config.CoR), lspcMutex, lspcObj);
@@ -1705,19 +1705,21 @@ void LoadParamsIntoReconfigure(std::shared_ptr<std::timed_mutex> lspcMutex, std:
         reconfigureConfig.sigma2_heading = -log10f(Parse2Float(reconfigureRetrieveParameter("estimator", "sigma2_heading", lspcMutex, lspcObj)));
         if (std::isinf(reconfigureConfig.sigma2_heading)) reconfigureConfig.sigma2_heading = 0;
 
-        reconfigureConfig.Var_COM = -log10f(Parse2Float(reconfigureRetrieveParameter("estimator", "Var_COM", lspcMutex, lspcObj)));
-        if (std::isinf(reconfigureConfig.Var_COM)) reconfigureConfig.Var_COM = 0;
+        reconfigureConfig.var_acc_bias = -log10f(Parse2Float(reconfigureRetrieveParameter("estimator", "var_acc_bias", lspcMutex, lspcObj)));
+        if (std::isinf(reconfigureConfig.var_acc_bias)) reconfigureConfig.var_acc_bias = 0;
+
+        reconfigureConfig.var_acceleration = -log10f(Parse2Float(reconfigureRetrieveParameter("estimator", "var_acceleration", lspcMutex, lspcObj)));
+        if (std::isinf(reconfigureConfig.var_acceleration)) reconfigureConfig.var_acceleration = 0;
     } catch (...)  {}
     reconfigureConfig.SensorDrivenQEKF = Parse2Bool(reconfigureRetrieveParameter("estimator", "SensorDrivenQEKF", lspcMutex, lspcObj));
     reconfigureConfig.EstimateBias = Parse2Bool(reconfigureRetrieveParameter("estimator", "EstimateBias", lspcMutex, lspcObj));
     reconfigureConfig.GyroscopeTrustFactor = Parse2RoundedFloat(reconfigureRetrieveParameter("estimator", "GyroscopeTrustFactor", lspcMutex, lspcObj));
-    reconfigureConfig.eta_encoder = Parse2RoundedFloat(reconfigureRetrieveParameter("estimator", "eta_encoder", lspcMutex, lspcObj));
     reconfigureConfig.EnableVelocityLPF = Parse2Bool(reconfigureRetrieveParameter("estimator", "EnableVelocityLPF", lspcMutex, lspcObj));
     reconfigureConfig.EnableWheelSlipDetector = Parse2Bool(reconfigureRetrieveParameter("estimator", "EnableWheelSlipDetector", lspcMutex, lspcObj));
     reconfigureConfig.UseVelocityEstimator = Parse2Bool(reconfigureRetrieveParameter("estimator", "UseVelocityEstimator", lspcMutex, lspcObj));
-    reconfigureConfig.UseTiltForVelocityPrediction = Parse2Bool(reconfigureRetrieveParameter("estimator", "UseTiltForVelocityPrediction", lspcMutex, lspcObj));
     reconfigureConfig.UseQdotInVelocityEstimator = Parse2Bool(reconfigureRetrieveParameter("estimator", "UseQdotInVelocityEstimator", lspcMutex, lspcObj));
-    reconfigureConfig.UseCOMestimateInVelocityEstimator = Parse2Bool(reconfigureRetrieveParameter("estimator", "UseCOMestimateInVelocityEstimator", lspcMutex, lspcObj));
+    reconfigureConfig.eta_encoder = Parse2RoundedFloat(reconfigureRetrieveParameter("estimator", "eta_encoder", lspcMutex, lspcObj));
+    reconfigureConfig.eta_accelerometer = Parse2RoundedFloat(reconfigureRetrieveParameter("estimator", "eta_accelerometer", lspcMutex, lspcObj));
 
     reconfigureConfig.l = Parse2RoundedFloat(reconfigureRetrieveParameter("model", "l", lspcMutex, lspcObj));
     reconfigureConfig.CoR = Parse2RoundedFloat(reconfigureRetrieveParameter("model", "CoR", lspcMutex, lspcObj));
