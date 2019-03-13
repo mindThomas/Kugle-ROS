@@ -3,7 +3,7 @@
   <version>0.0.0</version>
   <description>The kugle_msgs package</description>
   <maintainer email="thomasj@tkjelectronics.dk">Thomas Jespersen</maintainer>
-  <license>GPLv3</license>
+  <license>MIT</license>
 
   <author email="thomasj@tkjelectronics.dk">Thomas Jespersen</author>
 

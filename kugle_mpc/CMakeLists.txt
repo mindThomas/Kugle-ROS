@@ -9,12 +9,12 @@ add_compile_options(-std=c++11)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   roscpp
+  nav_core
+  nav_msgs
   base_local_planner
   pluginlib
   tf
   costmap_2d
-  nav_core
-  nav_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -117,7 +117,7 @@ add_subdirectory(libs/mpc)
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES kugle_mpc_plugin
-  CATKIN_DEPENDS roscpp nav_msgs pluginlib
+  CATKIN_DEPENDS nav_core pluginlib roscpp nav_msgs
 )
 
 ###########
@@ -164,9 +164,11 @@ add_definitions(${EIGEN3_DEFINITIONS})
 #   ${catkin_LIBRARIES}
 # )
 
+add_library(global_planner src/astar.cpp src/dijkstra.cpp src/gradient_path.cpp src/grid_path.cpp)
+
 add_library(kugle_mpc_plugin src/kugle_mpc_plugin.cpp)
-add_dependencies(kugle_mpc_plugin ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} mpc)
-target_link_libraries(kugle_mpc_plugin ${catkin_LIBRARIES} mpc)
+add_dependencies(kugle_mpc_plugin ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} mpc global_planner)
+target_link_libraries(kugle_mpc_plugin ${catkin_LIBRARIES} mpc global_planner)
 
 #############
 ## Install ##
