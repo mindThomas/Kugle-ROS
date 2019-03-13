@@ -21,7 +21,7 @@
 	    	<remap from="cmd_combined" to="cmd_combined" /> <!-- quaternion topic used in angle control -->
 	    	<remap from="joy" to="joy" />
 
-    		<param name="angle_mode" type="bool" value="true" />		
+    		<param name="angle_mode" type="bool" value="false" /> <!-- Start in angle mode (true) or velocity mode (false) -->
 
     		<param name="maximum_linear_velocity" type="double" value="0.5" />
     		<param name="rate_limit_linear_velocity" type="double" value="1.0" />
