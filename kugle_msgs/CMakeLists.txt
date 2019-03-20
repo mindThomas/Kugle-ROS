@@ -12,6 +12,10 @@ add_message_files(
   ControllerInfo.msg
   Encoders.msg
   StateEstimate.msg
+  Euler.msg
+  Vector2.msg
+  ControllerDebug.msg
+  BalanceControllerReference.msg
   powerManagmentInfo.msg
 )
 

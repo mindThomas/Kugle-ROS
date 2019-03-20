@@ -7,8 +7,8 @@ DWAPlannerROS:
   max_vel_y: 0.0
   min_vel_y: 0.0
 
-  max_trans_vel: 1.0 # choose slightly less than the base's capability
-  min_trans_vel: 0.1  # this is the min trans velocity when there is negligible rotational velocity
+  max_trans_vel: 0.5 # choose slightly less than the base's capability
+  min_trans_vel: 0.05  # this is the min trans velocity when there is negligible translational velocity
   trans_stopped_vel: 0.01
 
   # Warning!
@@ -16,10 +16,10 @@ DWAPlannerROS:
   #   are non-negligible and small in place rotational velocities will be created.
 
   max_rot_vel: 1.0  # choose slightly less than the base's capability
-  min_rot_vel: 0.05  # this is the min angular velocity when there is negligible translational velocity
+  min_rot_vel: 0.05  # this is the min angular velocity when there is negligible rotational velocity
   rot_stopped_vel: 0.01
   
-  acc_lim_x: 1.5 # maximum is theoretically 1.5 (given a maximum tilt angle of 15 degrees)
+  acc_lim_x: 1.0 # maximum is theoretically 1.5 (given a maximum tilt angle of 15 degrees)
   acc_lim_theta: 2.0
   acc_lim_y: 0.0      # diff drive robot
 
@@ -53,4 +53,4 @@ DWAPlannerROS:
 
 
 # Ball-bot is a holonomic robot (it can drive in any direction)
-  holonomic_robot: false    # OBS! dwa_local_planner is by default a holonomic planner - so if DWA planner is used for a differential drive robot (non-holonomic driving), this flag has to be set to false
+  holonomic_robot: true    # OBS! dwa_local_planner is by default a holonomic planner - so if DWA planner is used for a differential drive robot (non-holonomic driving), this flag has to be set to false

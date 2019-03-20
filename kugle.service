@@ -1,0 +1,12 @@
+[Unit]
+Description=Kugle ROS driver
+After=network.target
+
+[Service]
+User=kugle
+Type=forking
+ExecStart=/home/kugle/startup_launch.sh
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

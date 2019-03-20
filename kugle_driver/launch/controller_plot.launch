@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<launch>
+
+	<node name="plot1" pkg="rqt_plot" type="rqt_plot" required="false" args="/controller_debug/orient/roll /controller_debug/orient_ref/roll /controller_debug/orient/pitch /controller_debug/orient_ref/pitch"/>
+
+	<!--<node name="plot2" pkg="rqt_plot" type="rqt_plot" required="false" args="/controller_debug/vel/x /controller_debug/vel_kinematics/x /controller_debug/vel_ref/x"/>-->
+
+	<node name="plot3" pkg="rqt_plot" type="rqt_plot" required="false" args="/controller_debug/omega/x /controller_debug/omega_ref/x /controller_debug/omega/y /controller_debug/omega_ref/y"/>
+
+	<node name="plot4" pkg="rqt_plot" type="rqt_plot" required="false" args="/controller_debug/torque /controller_debug/S"/>
+
+</launch>

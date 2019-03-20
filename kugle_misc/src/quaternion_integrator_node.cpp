@@ -1,13 +1,12 @@
 /* Copyright (C) 2018-2019 Thomas Jespersen, TKJ Electronics. All rights reserved.
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, version 3.
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the MIT License
  *
  * This program is distributed in the hope that it will be useful, but
  * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the MIT License for further details.
  *
  * Contact information
  * ------------------------------------------
@@ -62,7 +61,7 @@ int main(int argc, char **argv) {
 	// Configure angular velocity topic to subscribe to
 	std::string angular_velocity_body_topic;
 	if (!nParam.getParam("angular_velocity_body_topic", angular_velocity_body_topic)) {
-		angular_velocity_body_topic = "cmd_vel_angular";
+		angular_velocity_body_topic = "cmd_vel";
 		ROS_WARN_STREAM("[" << nodeName << "] angular_velocity_body_topic not set. Defaults to: " << angular_velocity_body_topic);
 	}
 	// Alternative is
@@ -72,7 +71,7 @@ int main(int argc, char **argv) {
 	// Configure angular velocity topic to subscribe to
 	std::string angular_velocity_inertial_topic;
 	if (!nParam.getParam("angular_velocity_inertial_topic", angular_velocity_inertial_topic)) {
-        angular_velocity_inertial_topic = "cmd_vel_angular_inertial";
+        angular_velocity_inertial_topic = "cmd_vel_inertial";
 		ROS_WARN_STREAM("[" << nodeName << "] angular_velocity_inertial_topic not set. Defaults to: " << angular_velocity_inertial_topic);
 	}
 	// Alternative is

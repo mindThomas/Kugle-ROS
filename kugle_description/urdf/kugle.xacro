@@ -55,10 +55,10 @@
 
 	<!-- Include sensors links -->
 	<link name="sick_left_link" />
-	<xacro:fixed_offset_joint_rpy parent="base_link" child="sick_left_link" offset="0 0.123 0.33757" rpy="0 0 0" />
+	<xacro:fixed_offset_joint_rpy parent="base_link" child="sick_left_link" offset="0 0.123 0.33757" rpy="0 0 ${pi/2}" />
 
 	<link name="sick_right_link" />
-	<xacro:fixed_offset_joint_rpy parent="base_link" child="sick_right_link" offset="0 -0.123 0.33757" rpy="0 0 ${pi}" />
+	<xacro:fixed_offset_joint_rpy parent="base_link" child="sick_right_link" offset="0 -0.123 0.33757" rpy="0 0 -${pi/2}" />
 
 	<!-- Add realsense camera link -->
 	<link name="realsense_camera_link">
@@ -69,6 +69,6 @@
 	            </geometry>
 		</visual>
 	</link>
-	<xacro:fixed_offset_joint_rpy parent="base_link" child="realsense_camera_link" offset="0.05 0 1.11" rpy="00 0.25 0" />
+	<xacro:fixed_offset_joint_rpy parent="base_link" child="realsense_camera_link" offset="0.05 0 1.11" rpy="0 0.25 0" />
 
 </robot>

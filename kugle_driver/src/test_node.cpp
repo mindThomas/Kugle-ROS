@@ -1,3 +1,21 @@
+/* Copyright (C) 2018-2019 Thomas Jespersen, TKJ Electronics. All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the MIT License
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the MIT License for further details.
+ *
+ * Contact information
+ * ------------------------------------------
+ * Thomas Jespersen, TKJ Electronics
+ * Web      :  http://www.tkjelectronics.dk
+ * e-mail   :  thomasj@tkjelectronics.dk
+ * ------------------------------------------
+ */
+
 #include <ros/ros.h>
 #include <dynamic_reconfigure/server.h>
 
@@ -14,7 +32,7 @@
 // For CLion to update/capture the updated parameter and message types, open the "build" folder and run "make"
 
 /* Include generated Dynamic Reconfigure parameters */
-#include <kugle_driver/ParametersConfig.h>
+#include <kugle_driver/TestParametersConfig.h>
 
 /* Include generated Services */
 #include <kugle_srvs/AddTwoInts.h>
@@ -24,16 +42,25 @@
 
 void TestServiceClient(ros::NodeHandle &n);
 
-dynamic_reconfigure::Server<kugle_driver::ParametersConfig> * serverPtr;
+dynamic_reconfigure::Server<kugle_driver::TestParametersConfig> * serverPtr;
 /* Initialize the parameters at once, otherwise the values will be random */
-kugle_driver::ParametersConfig config;
+kugle_driver::TestParametersConfig config;
 
-void paramChangeCallback(kugle_driver::ParametersConfig &config, uint32_t level) {
+kugle_driver::TestParametersConfig prevConfig;
+
+void paramChangeCallback(kugle_driver::TestParametersConfig &config, uint32_t level) {
 	ROS_INFO("Reconfigure Request: %d %f %s %s %d",
             config.int_param, config.double_param, 
             config.str_param.c_str(), 
             config.bool_param?"True":"False", 
             config.size);
+
+    if (config.int_param != prevConfig.int_param) ROS_INFO("int_param changed");
+    if (config.double_param != prevConfig.double_param) ROS_INFO("double_param changed");
+    if (config.str_param.compare(prevConfig.str_param) != 0) ROS_INFO("str_param changed");
+    if (config.bool_param != prevConfig.bool_param) ROS_INFO("bool_param changed");
+    if (config.size != prevConfig.size) ROS_INFO("size changed");
+    prevConfig = config;
 }
 
 bool add(kugle_srvs::AddTwoInts::Request  &req,
@@ -53,20 +80,20 @@ bool add(kugle_srvs::AddTwoInts::Request  &req,
 }
 
 int main(int argc, char **argv) {
-	std::string nodeName = "driver";
+	std::string nodeName = "test_node";
 	ros::init(argc, argv, nodeName.c_str());
 	ros::NodeHandle n("~"); // default/current namespace node handle
 
 	// Enable reconfigurable parameters - note that any parameters set on the node by roslaunch <param> tags will be seen by a dynamically reconfigurable node just as it would have been by a conventional node.
     boost::recursive_mutex configMutex;
-	dynamic_reconfigure::Server<kugle_driver::ParametersConfig> server(configMutex);
-	dynamic_reconfigure::Server<kugle_driver::ParametersConfig>::CallbackType f;
+	dynamic_reconfigure::Server<kugle_driver::TestParametersConfig> server(configMutex);
+	dynamic_reconfigure::Server<kugle_driver::TestParametersConfig>::CallbackType f;
 	f = boost::bind(&paramChangeCallback, _1, _2);
+    server.getConfigDefault(prevConfig);
 	server.setCallback(f);
     serverPtr = &server;
 
-    server.getConfigDefault(config);
-    server.updateConfig(config);
+    ROS_INFO_STREAM("config.str_param = " << prevConfig.str_param);
 
 	// Create service
 	ros::ServiceServer service = n.advertiseService("add_two_ints", add);

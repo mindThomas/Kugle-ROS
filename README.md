@@ -1,6 +1,8 @@
 # Kugle-ROS
 ROS workspace for the Kugle robot including packages for high-level navigation tasks including localization/SLAM with LiDAR, path planning and obstacle avoidance
 
+The repository is structured according to general ROS practices, see e.g. https://github.com/leggedrobotics/ros_best_practices/wiki
+
 # Install tool
 ```bash
 sudo apt-get install python-catkin-tools
@@ -11,12 +13,13 @@ sudo apt-get install python-rosdep
 To set up the simulation environment you need to clone the necessary repositories into an existing or new catkin workspace.
 Follow the steps below to set up a new catkin workspace and clone:
 ```bash
-mkdir -p ~/kugle_simulation_ws/src
-cd ~/kugle_simulation_ws/src
+mkdir -p ~/kugle_ws/src
+cd ~/kugle_ws/src
 catkin_init_workspace
 git clone https://github.com/mindThomas/Kugle-Gazebo
 git clone https://github.com/mindThomas/Kugle-ROS
 git clone https://github.com/mindThomas/realsense_gazebo_plugin
+cd ..
 rosdep install --from-paths src --ignore-src -r -y
 ```
 
@@ -42,6 +45,22 @@ The bringup launch includes both the driver (as described below) and the SICK Li
 roslaunch kugle_bringup minimal.launch 
 ```
 
+## Install as service on boot
+A startup script and corresponding service (for starting at boot) for launching the minimal bringup launch file has been made.
+
+Copy the `startup_launch.sh` and `PrepareHostROS.sh` to the home folder. Copy the file `kugle.service` into `/lib/systemd/system` and modify the path to the `startup_launch.sh` script accordingly and rename the user and group to the username on the device if different. Enable the service on boot by running:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable kugle.service
+```
+
+After the service has been installed the driver can be started, stopped or restarted by using:
+```bash
+sudo service kugle start
+sudo service kugle stop
+sudo service kugle restart
+```
+
 ## Launching the driver
 The driver which communicates with the MCU over USB can be launched either on a laptop connected through USB to the MCU or on the onboard connected over USB. Launch the driver by running
 ```bash
@@ -54,7 +73,7 @@ An RVIZ visualization of the robot can be launched by running
 roslaunch kugle_launch rviz.launch
 ```
 
-## kugle_driver CPU load
+## kugle_driver MCU RTOS load
 When the `kugle_driver` is running the MCU load is published on the topic `mcu_load` which can be displayed by running
 ```bash
 rostopic echo /mcu_load -p

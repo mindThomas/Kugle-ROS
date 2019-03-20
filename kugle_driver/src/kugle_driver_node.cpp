@@ -1,13 +1,12 @@
 /* Copyright (C) 2018-2019 Thomas Jespersen, TKJ Electronics. All rights reserved.
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, version 3.
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the MIT License
  *
  * This program is distributed in the hope that it will be useful, but
  * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the MIT License for further details.
  *
  * Contact information
  * ------------------------------------------
@@ -18,11 +17,13 @@
  */
 
 #include <ros/ros.h>
+#include <dynamic_reconfigure/server.h>
 
 #include "LSPC.h"
 #include "MessageTypes.h"
 #include <string>
 #include <thread>
+#include <boost/thread/recursive_mutex.hpp>
 #include <future>
 #include <boost/bind.hpp>
 #include <fstream>      // for file output (std::ofstream)
@@ -30,6 +31,7 @@
 #include <chrono>
 #include <cstdint>
 #include <tuple>
+#include <cmath>
 
 #include "Queue.hpp"
 #include <cstdio>
@@ -74,6 +76,15 @@
 #include <kugle_msgs/Encoders.h>
 #include <kugle_msgs/StateEstimate.h>
 #include <kugle_msgs/powerManagmentInfo.h>
+#include <kugle_msgs/Euler.h>
+#include <kugle_msgs/Vector2.h>
+#include <kugle_msgs/ControllerDebug.h>
+#include <kugle_msgs/BalanceControllerReference.h>
+
+/* Include generated Dynamic Reconfigure parameters */
+#include <kugle_driver/ParametersConfig.h>
+
+// For CLion to update/capture the changes made to generated services, message types and parameters, open the "build" folder and run "make"
 
 /* Global variables */
 Queue<std::tuple<lspc::ParameterLookup::type_t, uint8_t, bool>> SetParameterResponse;
@@ -82,6 +93,14 @@ Queue<std::shared_ptr<std::vector<uint8_t>>> DumpParametersResponse;
 Queue<bool> StoreParametersResponse;
 Queue<bool> CalibrateIMUResponse;
 Queue<bool> RestartControllerResponse;
+
+lspc::ParameterTypes::controllerMode_t currentControllerMode = lspc::ParameterTypes::UNKNOWN_MODE;
+
+std::mutex reconfigureMutex;
+std::shared_ptr<dynamic_reconfigure::Server<kugle_driver::ParametersConfig>> reconfigureServer;
+kugle_driver::ParametersConfig reconfigureConfig;
+
+bool MATLAB_log = false;
 
 void LSPC_Callback_StateEstimates(ros::Publisher& pubOdom, ros::Publisher& pubStateEstimate, tf::TransformBroadcaster& tfBroadcaster, std::shared_ptr<tf::TransformListener> tfListener, const std::vector<uint8_t>& payload)
 {
@@ -249,7 +268,6 @@ std::string ParseControllerMode(lspc::ParameterTypes::controllerMode_t mode)
 {
     if (mode == lspc::ParameterTypes::OFF) return "OFF";
     else if (mode == lspc::ParameterTypes::QUATERNION_CONTROL) return "QUATERNION_CONTROL";
-    else if (mode == lspc::ParameterTypes::ANGULAR_VELOCITY_CONTROL) return "ANGULAR_VELOCITY_CONTROL";
     else if (mode == lspc::ParameterTypes::VELOCITY_CONTROL) return "VELOCITY_CONTROL";
     else if (mode == lspc::ParameterTypes::PATH_FOLLOWING) return "PATH_FOLLOWING";
     else return "UNKNOWN_MODE";
@@ -259,11 +277,47 @@ lspc::ParameterTypes::controllerMode_t ParseControllerMode2(std::string mode)
 {
     if (!mode.compare("OFF")) return lspc::ParameterTypes::OFF;
     else if (!mode.compare("QUATERNION_CONTROL")) return lspc::ParameterTypes::QUATERNION_CONTROL;
-    else if (!mode.compare("ANGULAR_VELOCITY_CONTROL")) return lspc::ParameterTypes::ANGULAR_VELOCITY_CONTROL;
     else if (!mode.compare("VELOCITY_CONTROL")) return lspc::ParameterTypes::VELOCITY_CONTROL;
     else if (!mode.compare("PATH_FOLLOWING")) return lspc::ParameterTypes::PATH_FOLLOWING;
     else return lspc::ParameterTypes::UNKNOWN_MODE;
 }
+
+lspc::ParameterTypes::slidingManifoldType_t ParseManifoldType2(std::string type)
+{
+    if (!type.compare("Q_DOT_INERTIAL_MANIFOLD")) return lspc::ParameterTypes::Q_DOT_INERTIAL_MANIFOLD;
+    else if (!type.compare("Q_DOT_BODY_MANIFOLD")) return lspc::ParameterTypes::Q_DOT_BODY_MANIFOLD;
+    else if (!type.compare("OMEGA_INERTIAL_MANIFOLD")) return lspc::ParameterTypes::OMEGA_INERTIAL_MANIFOLD;
+    else if (!type.compare("OMEGA_BODY_MANIFOLD")) return lspc::ParameterTypes::OMEGA_BODY_MANIFOLD;
+    else if (!type.compare("VELOCITY_AND_Q_DOT_MANIFOLD")) return lspc::ParameterTypes::VELOCITY_AND_Q_DOT_MANIFOLD;
+    else return lspc::ParameterTypes::UNKNOWN_MANIFOLD;
+}
+
+std::string ParseManifoldType(lspc::ParameterTypes::slidingManifoldType_t type)
+{
+    if (type == lspc::ParameterTypes::Q_DOT_INERTIAL_MANIFOLD) return "Q_DOT_INERTIAL_MANIFOLD";
+    else if (type == lspc::ParameterTypes::Q_DOT_BODY_MANIFOLD) return "Q_DOT_BODY_MANIFOLD";
+    else if (type == lspc::ParameterTypes::OMEGA_INERTIAL_MANIFOLD) return "OMEGA_INERTIAL_MANIFOLD";
+    else if (type == lspc::ParameterTypes::OMEGA_BODY_MANIFOLD) return "OMEGA_BODY_MANIFOLD";
+    else if (type == lspc::ParameterTypes::VELOCITY_AND_Q_DOT_MANIFOLD) return "VELOCITY_AND_Q_DOT_MANIFOLD";
+    else return "UNKNOWN_MANIFOLD";
+}
+
+std::string ParsePowerButtonMode(lspc::ParameterTypes::powerButtonMode_t mode)
+{
+    if (mode == lspc::ParameterTypes::POWER_OFF) return "POWER_OFF";
+    else if (mode == lspc::ParameterTypes::START_STOP_QUATERNION_CONTROL) return "START_STOP_QUATERNION_CONTROL";
+    else if (mode == lspc::ParameterTypes::START_STOP_VELOCITY_CONTROL) return "START_STOP_VELOCITY_CONTROL";
+    else return "UNKNOWN_BUTTON_MODE";
+}
+
+lspc::ParameterTypes::powerButtonMode_t ParsePowerButtonMode2(std::string mode)
+{
+    if (!mode.compare("POWER_OFF")) return lspc::ParameterTypes::POWER_OFF;
+    else if (!mode.compare("START_STOP_QUATERNION_CONTROL")) return lspc::ParameterTypes::START_STOP_QUATERNION_CONTROL;
+    else if (!mode.compare("START_STOP_VELOCITY_CONTROL")) return lspc::ParameterTypes::START_STOP_VELOCITY_CONTROL;
+    else return lspc::ParameterTypes::UNKNOWN_BUTTON_MODE;
+}
+
 
 void LSPC_Callback_ControllerInfo(ros::Publisher& pubControllerInfo, const std::vector<uint8_t>& payload)
 {
@@ -273,6 +327,8 @@ void LSPC_Callback_ControllerInfo(ros::Publisher& pubControllerInfo, const std::
         ROS_DEBUG("Error parsing ControllerInfo message");
         return;
     }
+
+    currentControllerMode = msgRaw->mode;
 
     kugle_msgs::ControllerInfo msg;
     msg.receive_time = ros::Time::now();
@@ -287,6 +343,68 @@ void LSPC_Callback_ControllerInfo(ros::Publisher& pubControllerInfo, const std::
     msg.delivered_torque[1] = msgRaw->delivered_torque2;
     msg.delivered_torque[2] = msgRaw->delivered_torque3;
     pubControllerInfo.publish(msg);
+
+    if (reconfigureMutex.try_lock()) {
+        if (reconfigureConfig.type != msgRaw->type || reconfigureConfig.mode != msgRaw->mode) {
+            reconfigureConfig.type = int(msgRaw->type);
+            reconfigureConfig.mode = int(msgRaw->mode);
+            reconfigureServer->updateConfig(reconfigureConfig);
+        }
+        reconfigureMutex.unlock();
+    }
+}
+
+void LSPC_Callback_ControllerDebug(ros::Publisher& pubControllerDebug, const std::vector<uint8_t>& payload)
+{
+    //ROS_DEBUG_STREAM("Controller debug received");
+    const lspc::MessageTypesToPC::ControllerDebug_t * msgRaw = reinterpret_cast<const lspc::MessageTypesToPC::ControllerDebug_t *>(payload.data());
+    if (sizeof(*msgRaw) != payload.size()) {
+        ROS_DEBUG("Error parsing ControllerDebug message");
+        return;
+    }
+
+    kugle_msgs::ControllerDebug msg;
+    msg.receive_time = ros::Time::now();
+    msg.mcu_time = msgRaw->time;
+
+    msg.orient.roll = msgRaw->orient.roll;
+    msg.orient.pitch = msgRaw->orient.pitch;
+    msg.orient.yaw = msgRaw->orient.yaw;
+
+    msg.orient_ref.roll = msgRaw->orient_ref.roll;
+    msg.orient_ref.pitch = msgRaw->orient_ref.pitch;
+    msg.orient_ref.yaw = msgRaw->orient_ref.yaw;
+
+    msg.orient_integral.roll = msgRaw->orient_integral.roll;
+    msg.orient_integral.pitch = msgRaw->orient_integral.pitch;
+    msg.orient_integral.yaw = msgRaw->orient_integral.yaw;
+
+    msg.omega.x = msgRaw->omega.x;
+    msg.omega.y = msgRaw->omega.y;
+    msg.omega.z = msgRaw->omega.z;
+
+    msg.omega_ref.x = msgRaw->omega_ref.x;
+    msg.omega_ref.y = msgRaw->omega_ref.y;
+    msg.omega_ref.z = msgRaw->omega_ref.z;
+
+    msg.vel.x = msgRaw->vel.x;
+    msg.vel.y = msgRaw->vel.y;
+
+    msg.vel_kinematics.x = msgRaw->vel_kinematics.x;
+    msg.vel_kinematics.y = msgRaw->vel_kinematics.y;
+
+    msg.vel_ref.x = msgRaw->vel_ref.x;
+    msg.vel_ref.y = msgRaw->vel_ref.y;
+
+    msg.torque[0] = msgRaw->torque[0];
+    msg.torque[1] = msgRaw->torque[1];
+    msg.torque[2] = msgRaw->torque[2];
+
+    msg.S[0] = msgRaw->S[0];
+    msg.S[1] = msgRaw->S[1];
+    msg.S[2] = msgRaw->S[2];
+
+    pubControllerDebug.publish(msg);
 }
 
 void LSPC_Callback_RawSensor_IMU_MPU9250(ros::Publisher& pubIMU, ros::Publisher& pubMag, const std::vector<uint8_t>& payload)
@@ -401,7 +519,7 @@ void LSPC_Callback_RawSensor_Encoders(ros::Publisher& pubEncoders, const std::ve
 {
     const lspc::MessageTypesToPC::RawSensor_Encoders_t * msgRaw = reinterpret_cast<const lspc::MessageTypesToPC::RawSensor_Encoders_t *>(payload.data());
     if (sizeof(*msgRaw) != payload.size()) {
-        ROS_DEBUG("Error parsing ControllerInfo message");
+        ROS_DEBUG("Error parsing RawSensor_Encoders message");
         return;
     }
 
@@ -486,32 +604,109 @@ std::string GetFormattedTimestampCurrent()
 }
 
 void ROS_Callback_cmd_vel(const geometry_msgs::Twist::ConstPtr& msg, std::shared_ptr<std::timed_mutex> lspcMutex, std::shared_ptr<lspc::Socket *> lspcObj) {
-    if (!lspcMutex->try_lock_for(std::chrono::milliseconds(1))) return; // could not get lock
+    if (!lspcMutex->try_lock_for(std::chrono::milliseconds(100))) return; // could not get lock
 
     if ((*lspcObj)->isOpen()) {
-        ROS_DEBUG_STREAM("Sending cmd_vel to Kugle");
-        lspc::MessageTypesFromPC::VelocityReference_Heading_t payload;
+        //ROS_DEBUG_STREAM("Sending cmd_vel to Kugle as both VelocityReference_Heading and AngularVelocityReference_Body");
+        lspc::MessageTypesFromPC::VelocityReference_t payload;
+        payload.frame = lspc::ParameterTypes::HEADING_FRAME;
         payload.vel.x = msg->linear.x;
         payload.vel.y = msg->linear.y;
         payload.vel.yaw = msg->angular.z;
         std::vector<uint8_t> payloadPacked((uint8_t *)&payload, (uint8_t *)&payload+sizeof(payload)); // this method of "serializing" requires that PC runs Little Endian (which most PC processors do = Intel x86, AMD 64 etc.)
-        (*lspcObj)->send(lspc::MessageTypesFromPC::VelocityReference_Heading, payloadPacked);
+        (*lspcObj)->send(lspc::MessageTypesFromPC::VelocityReference, payloadPacked);
+
+        lspc::MessageTypesFromPC::AngularVelocityReference_t payload2;
+        payload2.frame = lspc::ParameterTypes::BODY_FRAME;
+        payload2.omega.x = msg->angular.x;
+        payload2.omega.y = msg->angular.y;
+        payload2.omega.z = msg->angular.z;
+        std::vector<uint8_t> payloadPacked2((uint8_t *)&payload2, (uint8_t *)&payload2+sizeof(payload2)); // this method of "serializing" requires that PC runs Little Endian (which most PC processors do = Intel x86, AMD 64 etc.)
+        (*lspcObj)->send(lspc::MessageTypesFromPC::AngularVelocityReference, payloadPacked2);
     }
 
     lspcMutex->unlock();
 }
 
 void ROS_Callback_cmd_vel_inertial(const geometry_msgs::Twist::ConstPtr& msg, std::shared_ptr<std::timed_mutex> lspcMutex, std::shared_ptr<lspc::Socket *> lspcObj) {
-    if (!lspcMutex->try_lock_for(std::chrono::milliseconds(1))) return; // could not get lock
+    if (!lspcMutex->try_lock_for(std::chrono::milliseconds(100))) return; // could not get lock
 
     if ((*lspcObj)->isOpen()) {
-        ROS_DEBUG_STREAM("Sending cmd_vel_inertial to Kugle");
-        lspc::MessageTypesFromPC::VelocityReference_Inertial_t payload;
+        //ROS_DEBUG_STREAM("Sending cmd_vel_inertial to Kugle as both VelocityReference_Inertial and AngularVelocityReference_Inertial");
+        lspc::MessageTypesFromPC::VelocityReference_t payload;
+        payload.frame = lspc::ParameterTypes::INERTIAL_FRAME;
         payload.vel.x = msg->linear.x;
         payload.vel.y = msg->linear.y;
         payload.vel.yaw = msg->angular.z;
         std::vector<uint8_t> payloadPacked((uint8_t *)&payload, (uint8_t *)&payload+sizeof(payload)); // this method of "serializing" requires that PC runs Little Endian (which most PC processors do = Intel x86, AMD 64 etc.)
-        (*lspcObj)->send(lspc::MessageTypesFromPC::VelocityReference_Inertial, payloadPacked);
+        (*lspcObj)->send(lspc::MessageTypesFromPC::VelocityReference, payloadPacked);
+
+        lspc::MessageTypesFromPC::AngularVelocityReference_t payload2;
+        payload2.frame = lspc::ParameterTypes::INERTIAL_FRAME;
+        payload2.omega.x = msg->angular.x;
+        payload2.omega.y = msg->angular.y;
+        payload2.omega.z = msg->angular.z;
+        std::vector<uint8_t> payloadPacked2((uint8_t *)&payload2, (uint8_t *)&payload2+sizeof(payload2)); // this method of "serializing" requires that PC runs Little Endian (which most PC processors do = Intel x86, AMD 64 etc.)
+        (*lspcObj)->send(lspc::MessageTypesFromPC::AngularVelocityReference, payloadPacked2);
+    }
+
+    lspcMutex->unlock();
+}
+
+void ROS_Callback_cmd_quaternion(const geometry_msgs::Quaternion::ConstPtr& msg, std::shared_ptr<std::timed_mutex> lspcMutex, std::shared_ptr<lspc::Socket *> lspcObj) {
+    if (!lspcMutex->try_lock_for(std::chrono::milliseconds(100))) return; // could not get lock
+
+    if ((*lspcObj)->isOpen()) {
+        //ROS_DEBUG_STREAM("Sending cmd_quaternion to Kugle");
+        lspc::MessageTypesFromPC::QuaternionReference_t payload;
+        payload.q.w = msg->w;
+        payload.q.x = msg->x;
+        payload.q.y = msg->y;
+        payload.q.z = msg->z;
+        std::vector<uint8_t> payloadPacked((uint8_t *)&payload, (uint8_t *)&payload+sizeof(payload)); // this method of "serializing" requires that PC runs Little Endian (which most PC processors do = Intel x86, AMD 64 etc.)
+        (*lspcObj)->send(lspc::MessageTypesFromPC::QuaternionReference, payloadPacked);
+    }
+
+    lspcMutex->unlock();
+}
+
+void ROS_Callback_cmd_combined(const kugle_msgs::BalanceControllerReference::ConstPtr& msg, std::shared_ptr<std::timed_mutex> lspcMutex, std::shared_ptr<lspc::Socket *> lspcObj) {
+    if (!lspcMutex->try_lock_for(std::chrono::milliseconds(100))) return; // could not get lock
+
+    if ((*lspcObj)->isOpen()) {
+        //ROS_DEBUG_STREAM("Sending cmd_quaternion to Kugle");
+        lspc::MessageTypesFromPC::BalanceControllerReference_t payload;
+        payload.frame = lspc::ParameterTypes::BODY_FRAME;
+        payload.q.w = msg->q.w;
+        payload.q.x = msg->q.x;
+        payload.q.y = msg->q.y;
+        payload.q.z = msg->q.z;
+        payload.omega.x = msg->omega.x;
+        payload.omega.y = msg->omega.y;
+        payload.omega.z = msg->omega.z;
+        std::vector<uint8_t> payloadPacked((uint8_t *)&payload, (uint8_t *)&payload+sizeof(payload)); // this method of "serializing" requires that PC runs Little Endian (which most PC processors do = Intel x86, AMD 64 etc.)
+        (*lspcObj)->send(lspc::MessageTypesFromPC::BalanceControllerReference, payloadPacked);
+    }
+
+    lspcMutex->unlock();
+}
+
+void ROS_Callback_cmd_combined_inertial(const kugle_msgs::BalanceControllerReference::ConstPtr& msg, std::shared_ptr<std::timed_mutex> lspcMutex, std::shared_ptr<lspc::Socket *> lspcObj) {
+    if (!lspcMutex->try_lock_for(std::chrono::milliseconds(100))) return; // could not get lock
+
+    if ((*lspcObj)->isOpen()) {
+        //ROS_DEBUG_STREAM("Sending cmd_quaternion to Kugle");
+        lspc::MessageTypesFromPC::BalanceControllerReference_t payload;
+        payload.frame = lspc::ParameterTypes::INERTIAL_FRAME;
+        payload.q.w = msg->q.w;
+        payload.q.x = msg->q.x;
+        payload.q.y = msg->q.y;
+        payload.q.z = msg->q.z;
+        payload.omega.x = msg->omega.x;
+        payload.omega.y = msg->omega.y;
+        payload.omega.z = msg->omega.z;
+        std::vector<uint8_t> payloadPacked((uint8_t *)&payload, (uint8_t *)&payload+sizeof(payload)); // this method of "serializing" requires that PC runs Little Endian (which most PC processors do = Intel x86, AMD 64 etc.)
+        (*lspcObj)->send(lspc::MessageTypesFromPC::BalanceControllerReference, payloadPacked);
     }
 
     lspcMutex->unlock();
@@ -535,16 +730,24 @@ bool ParseParamTypeAndID(const std::string in_type, const std::string in_param, 
 
     /* Parse parameter text */
     if (out_type == lspc::ParameterLookup::debug) {
-        if (!in_param.compare("EnableLogOutput")) {
-            out_param = lspc::ParameterLookup::EnableLogOutput;
+        if (!in_param.compare("EnableDumpMessages")) {
+            out_param = lspc::ParameterLookup::EnableDumpMessages;
             out_valueType = lspc::ParameterLookup::_bool;
         }
         else if (!in_param.compare("EnableRawSensorOutput")) {
             out_param = lspc::ParameterLookup::EnableRawSensorOutput;
             out_valueType = lspc::ParameterLookup::_bool;
         }
+        else if (!in_param.compare("UseFilteredIMUinRawSensorOutput")) {
+            out_param = lspc::ParameterLookup::UseFilteredIMUinRawSensorOutput;
+            out_valueType = lspc::ParameterLookup::_bool;
+        }
+        else if (!in_param.compare("DisableMotorOutput")) {
+            out_param = lspc::ParameterLookup::DisableMotorOutput;
+            out_valueType = lspc::ParameterLookup::_bool;
+        }
         else {
-            ROS_DEBUG("Parameter lookup: Parameter not found");
+            ROS_DEBUG("Parameter lookup: Parameter not found (type=%s, param=%s)", in_type.c_str(), in_param.c_str());
             return false;
         }
     }
@@ -562,8 +765,16 @@ bool ParseParamTypeAndID(const std::string in_type, const std::string in_param, 
             out_param = lspc::ParameterLookup::StepTestEnabled;
             out_valueType = lspc::ParameterLookup::_bool;
         }
+        else if (!in_param.compare("SineTestEnabled")) {
+            out_param = lspc::ParameterLookup::SineTestEnabled;
+            out_valueType = lspc::ParameterLookup::_bool;
+        }
+        else if (!in_param.compare("PowerButtonMode")) {
+            out_param = lspc::ParameterLookup::PowerButtonMode;
+            out_valueType = lspc::ParameterLookup::_uint8;
+        }
         else {
-            ROS_DEBUG("Parameter lookup: Parameter not found");
+            ROS_DEBUG("Parameter lookup: Parameter not found (type=%s, param=%s)", in_type.c_str(), in_param.c_str());
             return false;
         }
     }
@@ -581,17 +792,27 @@ bool ParseParamTypeAndID(const std::string in_type, const std::string in_param, 
             out_param = lspc::ParameterLookup::EnableTorqueLPF;
             out_valueType = lspc::ParameterLookup::_bool;
         }
+        else if (!in_param.compare("ManifoldType")) {
+            out_param = lspc::ParameterLookup::ManifoldType;
+            out_valueType = lspc::ParameterLookup::_uint8;
+        }
         else if (!in_param.compare("ContinousSwitching")) {
             out_param = lspc::ParameterLookup::ContinousSwitching;
+            out_valueType = lspc::ParameterLookup::_bool;
+        }
+        else if (!in_param.compare("EquivalentControl")) {
+            out_param = lspc::ParameterLookup::EquivalentControl;
             out_valueType = lspc::ParameterLookup::_bool;
         }
         else if (!in_param.compare("eta")) {
             out_param = lspc::ParameterLookup::eta;
             out_valueType = lspc::ParameterLookup::_float;
+            out_arraySize = 3;
         }
         else if (!in_param.compare("epsilon")) {
             out_param = lspc::ParameterLookup::epsilon;
             out_valueType = lspc::ParameterLookup::_float;
+            out_arraySize = 3;
         }
         else if (!in_param.compare("K")) {
             out_param = lspc::ParameterLookup::K;
@@ -610,9 +831,50 @@ bool ParseParamTypeAndID(const std::string in_type, const std::string in_param, 
             out_param = lspc::ParameterLookup::Kz;
             out_valueType = lspc::ParameterLookup::_float;
         }
+        else if (!in_param.compare("Kv_x")) {
+            out_param = lspc::ParameterLookup::Kv_x;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+        else if (!in_param.compare("Kv_y")) {
+            out_param = lspc::ParameterLookup::Kv_y;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+        else if (!in_param.compare("Kvi_x")) {
+            out_param = lspc::ParameterLookup::Kvi_x;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+        else if (!in_param.compare("Kvi_y")) {
+            out_param = lspc::ParameterLookup::Kvi_y;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+        else if (!in_param.compare("gamma")) {
+            out_param = lspc::ParameterLookup::gamma;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+        else if (!in_param.compare("AngularVelocityClamps")) {
+            out_param = lspc::ParameterLookup::AngularVelocityClamps;
+            out_valueType = lspc::ParameterLookup::_float;
+            out_arraySize = 3;
+        }
+        else if (!in_param.compare("AngularVelocityClampsEnabled")) {
+            out_param = lspc::ParameterLookup::AngularVelocityClampsEnabled;
+            out_valueType = lspc::ParameterLookup::_bool;
+        }
         else if (!in_param.compare("DisableQdot")) {
             out_param = lspc::ParameterLookup::DisableQdot;
             out_valueType = lspc::ParameterLookup::_bool;
+        }
+        else if (!in_param.compare("DisableQdotInEquivalentControl")) {
+            out_param = lspc::ParameterLookup::DisableQdotInEquivalentControl;
+            out_valueType = lspc::ParameterLookup::_bool;
+        }
+        else if (!in_param.compare("DisableOmegaXYInEquivalentControl")) {
+            out_param = lspc::ParameterLookup::DisableOmegaXYInEquivalentControl;
+            out_valueType = lspc::ParameterLookup::_bool;
+        }
+        else if (!in_param.compare("VelocityControl_AccelerationLimit")) {
+            out_param = lspc::ParameterLookup::VelocityControl_AccelerationLimit;
+            out_valueType = lspc::ParameterLookup::_float;
         }
         else if (!in_param.compare("VelocityController_MaxTilt")) {
             out_param = lspc::ParameterLookup::VelocityController_MaxTilt;
@@ -630,8 +892,20 @@ bool ParseParamTypeAndID(const std::string in_type, const std::string in_param, 
             out_param = lspc::ParameterLookup::VelocityController_IntegralGain;
             out_valueType = lspc::ParameterLookup::_float;
         }
+        else if (!in_param.compare("VelocityController_AngleLPFtau")) {
+            out_param = lspc::ParameterLookup::VelocityController_AngleLPFtau;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+        else if (!in_param.compare("VelocityController_OmegaLPFtau")) {
+            out_param = lspc::ParameterLookup::VelocityController_OmegaLPFtau;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+        else if (!in_param.compare("VelocityControl_UseOmegaRef")) {
+            out_param = lspc::ParameterLookup::VelocityControl_UseOmegaRef;
+            out_valueType = lspc::ParameterLookup::_bool;
+        }
         else {
-            ROS_DEBUG("Parameter lookup: Parameter not found");
+            ROS_DEBUG("Parameter lookup: Parameter not found (type=%s, param=%s)", in_type.c_str(), in_param.c_str());
             return false;
         }
     }
@@ -653,6 +927,10 @@ bool ParseParamTypeAndID(const std::string in_type, const std::string in_param, 
             out_param = lspc::ParameterLookup::EstimateBias;
             out_valueType = lspc::ParameterLookup::_bool;
         }
+        else if (!in_param.compare("SensorDrivenQEKF")) {
+            out_param = lspc::ParameterLookup::SensorDrivenQEKF;
+            out_valueType = lspc::ParameterLookup::_bool;
+        }
         else if (!in_param.compare("UseVelocityEstimator")) {
             out_param = lspc::ParameterLookup::UseVelocityEstimator;
             out_valueType = lspc::ParameterLookup::_bool;
@@ -661,16 +939,56 @@ bool ParseParamTypeAndID(const std::string in_type, const std::string in_param, 
             out_param = lspc::ParameterLookup::UseCoRvelocity;
             out_valueType = lspc::ParameterLookup::_bool;
         }
+        else if (!in_param.compare("EnableVelocityLPF")) {
+            out_param = lspc::ParameterLookup::EnableVelocityLPF;
+            out_valueType = lspc::ParameterLookup::_bool;
+        }
+        else if (!in_param.compare("EnableWheelSlipDetector")) {
+            out_param = lspc::ParameterLookup::EnableWheelSlipDetector;
+            out_valueType = lspc::ParameterLookup::_bool;
+        }
         else if (!in_param.compare("EstimateCOM")) {
             out_param = lspc::ParameterLookup::EstimateCOM;
             out_valueType = lspc::ParameterLookup::_bool;
         }
-        else if (!in_param.compare("UseCOMestimateInVelocityEstimator")) {
-            out_param = lspc::ParameterLookup::UseCOMestimateInVelocityEstimator;
+        else if (!in_param.compare("UseQdotInVelocityEstimator")) {
+            out_param = lspc::ParameterLookup::UseQdotInVelocityEstimator;
             out_valueType = lspc::ParameterLookup::_bool;
         }
+        else if (!in_param.compare("sigma2_bias")) {
+            out_param = lspc::ParameterLookup::sigma2_bias;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+        else if (!in_param.compare("sigma2_omega")) {
+            out_param = lspc::ParameterLookup::sigma2_omega;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+        else if (!in_param.compare("sigma2_heading")) {
+            out_param = lspc::ParameterLookup::sigma2_heading;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+        else if (!in_param.compare("GyroscopeTrustFactor")) {
+            out_param = lspc::ParameterLookup::GyroscopeTrustFactor;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+        else if (!in_param.compare("eta_encoder")) {
+            out_param = lspc::ParameterLookup::eta_encoder;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+        else if (!in_param.compare("eta_accelerometer")) {
+            out_param = lspc::ParameterLookup::eta_accelerometer;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+        else if (!in_param.compare("var_acc_bias")) {
+            out_param = lspc::ParameterLookup::var_acc_bias;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+        else if (!in_param.compare("var_acceleration")) {
+            out_param = lspc::ParameterLookup::var_acceleration;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
         else {
-            ROS_DEBUG("Parameter lookup: Parameter not found");
+            ROS_DEBUG("Parameter lookup: Parameter not found (type=%s, param=%s)", in_type.c_str(), in_param.c_str());
             return false;
         }
     }
@@ -678,6 +996,10 @@ bool ParseParamTypeAndID(const std::string in_type, const std::string in_param, 
     else if (out_type == lspc::ParameterLookup::model) {
         if (!in_param.compare("l")) {
             out_param = lspc::ParameterLookup::l;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+        else if (!in_param.compare("CoR")) {
+            out_param = lspc::ParameterLookup::CoR;
             out_valueType = lspc::ParameterLookup::_float;
         }
         else if (!in_param.compare("Mk")) {
@@ -688,8 +1010,24 @@ bool ParseParamTypeAndID(const std::string in_type, const std::string in_param, 
             out_param = lspc::ParameterLookup::Mb;
             out_valueType = lspc::ParameterLookup::_float;
         }
+        else if (!in_param.compare("Bvk")) {
+            out_param = lspc::ParameterLookup::Bvk;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+        else if (!in_param.compare("Bvm")) {
+            out_param = lspc::ParameterLookup::Bvm;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+        else if (!in_param.compare("Bvb")) {
+            out_param = lspc::ParameterLookup::Bvb;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+        else if (!in_param.compare("SaturationTorqueOfMaxOutputTorque")) {
+            out_param = lspc::ParameterLookup::SaturationTorqueOfMaxOutputTorque;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
         else {
-            ROS_DEBUG("Parameter lookup: Parameter not found");
+            ROS_DEBUG("Parameter lookup: Parameter not found (type=%s, param=%s)", in_type.c_str(), in_param.c_str());
             return false;
         }
     }
@@ -704,7 +1042,7 @@ bool ParseParamTypeAndID(const std::string in_type, const std::string in_param, 
             out_valueType = lspc::ParameterLookup::_float;
         }
         else {
-            ROS_DEBUG("Parameter lookup: Parameter not found");
+            ROS_DEBUG("Parameter lookup: Parameter not found (type=%s, param=%s)", in_type.c_str(), in_param.c_str());
             return false;
         }
     }
@@ -739,7 +1077,9 @@ bool ROS_Service_SetParameter(kugle_srvs::SetParameter::Request &req, kugle_srvs
                                      std::istream_iterator<std::string>());
 
     /* Parse parameter value based on type - currently this does not support arrays! */
-    for (std::string valueString : values) {
+    for (unsigned int i = 0; i < msg.arraySize; i++) {
+        std::string valueString = values.at(std::min<unsigned int>(i, values.size()-1));
+
         if (msg.valueType == lspc::ParameterLookup::_bool) {
             if (!valueString.compare("true"))
                 payloadPacked.push_back(1);
@@ -765,6 +1105,18 @@ bool ROS_Service_SetParameter(kugle_srvs::SetParameter::Request &req, kugle_srvs
                 } else if (msg.type == lspc::ParameterLookup::controller && msg.param == lspc::ParameterLookup::type) {
                     value = ParseControllerType2(valueString);
                     if (value == lspc::ParameterTypes::UNKNOWN_CONTROLLER) {
+                        lspcMutex->unlock();
+                        return true;
+                    }
+                } else if (msg.type == lspc::ParameterLookup::controller && msg.param == lspc::ParameterLookup::ManifoldType) {
+                    value = ParseManifoldType2(valueString);
+                    if (value == lspc::ParameterTypes::UNKNOWN_MANIFOLD) {
+                        lspcMutex->unlock();
+                        return true;
+                    }
+                } else if (msg.type == lspc::ParameterLookup::behavioural && msg.param == lspc::ParameterLookup::PowerButtonMode) {
+                    value = ParsePowerButtonMode2(valueString);
+                    if (value == lspc::ParameterTypes::UNKNOWN_BUTTON_MODE) {
                         lspcMutex->unlock();
                         return true;
                     }
@@ -840,6 +1192,7 @@ bool ROS_Service_SetParameter(kugle_srvs::SetParameter::Request &req, kugle_srvs
     /* Send message to embedded controller */
     SetParameterResponse.clear(); // clear queue to prepare for waiting for response
     (*lspcObj)->send(lspc::MessageTypesFromPC::SetParameter, payloadPacked);
+    lspcMutex->unlock();
 
     /* Wait for response */
     std::tuple<lspc::ParameterLookup::type_t, uint8_t, bool> response;
@@ -852,11 +1205,9 @@ bool ROS_Service_SetParameter(kugle_srvs::SetParameter::Request &req, kugle_srvs
             res.acknowledged = false;
     } else {
         ROS_DEBUG("Set parameter: Response timeout");
-        lspcMutex->unlock();
         return true; // timeout
     }
 
-    lspcMutex->unlock();
     return true;
 }
 
@@ -896,16 +1247,16 @@ bool ROS_Service_GetParameter(kugle_srvs::GetParameter::Request &req, kugle_srvs
     GetParameterResponse.clear();
     std::vector<uint8_t> payloadPacked((uint8_t *)&msg, (uint8_t *)&msg+sizeof(msg));
     (*lspcObj)->send(lspc::MessageTypesFromPC::GetParameter, payloadPacked);
+    lspcMutex->unlock();
 
     /* Wait for initial response */
     std::shared_ptr<std::vector<uint8_t>> response;
-    if (!GetParameterResponse.pop(response, 2)) { // 2 seconds timeout
+    if (!GetParameterResponse.pop(response, 1)) { // 1 seconds timeout
         ROS_DEBUG("Get parameter: Response timeout");
-        lspcMutex->unlock();
         return false; // timeout
     }
 
-    ROS_DEBUG_STREAM("Received GetParameter response package of size " << response->size());
+    //ROS_DEBUG_STREAM("Received GetParameter response package of size " << response->size());
 
     /* Parse response to identify how many packages that will follow */
     const lspc::MessageTypesToPC::GetParameter_t * msgResponse = reinterpret_cast<const lspc::MessageTypesToPC::GetParameter_t *>(response->data());
@@ -914,27 +1265,28 @@ bool ROS_Service_GetParameter(kugle_srvs::GetParameter::Request &req, kugle_srvs
         return false;
     }
 
+    if (msgResponse->param == lspc::ParameterLookup::unknown) {
+        ROS_DEBUG("Get parameter: Response mismatch (unknown parameter ID)");
+        return false;
+    }
+
     if (msgResponse->param != msg.param) {
         ROS_DEBUG("Get parameter: Response mismatch (incorrect parameter ID)");
-        lspcMutex->unlock();
         return false;
     }
 
     if (msgResponse->type != msg.type) {
         ROS_DEBUG("Get parameter: Response mismatch (incorrect parameter type)");
-        lspcMutex->unlock();
         return false;
     }
 
     if (msgResponse->valueType != valueType) {
         ROS_DEBUG("Get parameter: Response mismatch (incorrect value type)");
-        lspcMutex->unlock();
         return false;
     }
 
     if (msgResponse->arraySize != arraySize) {
         ROS_DEBUG("Get parameter: Response mismatch (incorrect array size)");
-        lspcMutex->unlock();
         return false;
     }
 
@@ -959,6 +1311,10 @@ bool ROS_Service_GetParameter(kugle_srvs::GetParameter::Request &req, kugle_srvs
                 os << ParseControllerMode((lspc::ParameterTypes::controllerMode_t)value);
             } else if (msg.type == lspc::ParameterLookup::controller && msg.param == lspc::ParameterLookup::type) {
                 os << ParseControllerType((lspc::ParameterTypes::controllerType_t)value);
+            } else if (msg.type == lspc::ParameterLookup::controller && msg.param == lspc::ParameterLookup::ManifoldType) {
+                os << ParseManifoldType((lspc::ParameterTypes::slidingManifoldType_t)value);
+            } else if (msg.type == lspc::ParameterLookup::behavioural && msg.param == lspc::ParameterLookup::PowerButtonMode) {
+                os << ParsePowerButtonMode((lspc::ParameterTypes::powerButtonMode_t)value);
             } else { // not a parameter where we expect a string
                 os << int(value);
             }
@@ -980,13 +1336,12 @@ bool ROS_Service_GetParameter(kugle_srvs::GetParameter::Request &req, kugle_srvs
 
     res.value = os.str();
 
-    lspcMutex->unlock();
     return true;
 }
 
 void LSPC_Callback_GetParameter(const std::vector<uint8_t>& payload)
 {
-    ROS_DEBUG_STREAM("Get parameter info received");
+    //ROS_DEBUG_STREAM("Get parameter info received");
 
     std::shared_ptr<std::vector<uint8_t>> payloadPackage = std::make_shared<std::vector<uint8_t>>(payload);
     GetParameterResponse.push(payloadPackage); // push to service thread
@@ -1007,12 +1362,12 @@ bool ROS_Service_DumpParameters(kugle_srvs::DumpParameters::Request &req, kugle_
     std::vector<uint8_t> empty;
     DumpParametersResponse.clear();
     (*lspcObj)->send(lspc::MessageTypesFromPC::DumpParameters, empty);
+    lspcMutex->unlock();
 
     /* Wait for initial response */
     std::shared_ptr<std::vector<uint8_t>> response;
     if (!DumpParametersResponse.pop(response, 2)) { // 2 seconds timeout
         ROS_DEBUG("Dump parameters: Response timeout");
-        lspcMutex->unlock();
         return false; // timeout
     }
 
@@ -1033,7 +1388,6 @@ bool ROS_Service_DumpParameters(kugle_srvs::DumpParameters::Request &req, kugle_
         std::shared_ptr<std::vector<uint8_t>> dumpPackage;
         if (!DumpParametersResponse.pop(dumpPackage, 2)) { // 2 seconds timeout
             ROS_DEBUG("Dump parameters: Response timeout");
-            lspcMutex->unlock();
             return false; // timeout
         }
         ROS_DEBUG_STREAM("Dump parameters: Got response of size " << dumpPackage->size());
@@ -1047,7 +1401,6 @@ bool ROS_Service_DumpParameters(kugle_srvs::DumpParameters::Request &req, kugle_
 
     // Do something with the "dumpPackage" vector here containing the dumped raw parameter bytes
 
-    lspcMutex->unlock();
     return true;
 }
 
@@ -1071,18 +1424,17 @@ bool ROS_Service_StoreParameters(kugle_srvs::StoreParameters::Request &req, kugl
     std::vector<uint8_t> empty;
     StoreParametersResponse.clear();
     (*lspcObj)->send(lspc::MessageTypesFromPC::StoreParameters, empty);
+    lspcMutex->unlock();
 
     /* Wait for response */
     bool acknowledged;
     if (!StoreParametersResponse.pop(acknowledged, 2)) { // 2 seconds timeout
         ROS_DEBUG("Store parameters: Response timeout");
-        lspcMutex->unlock();
         return false; // timeout
     }
 
     res.acknowledged = acknowledged;
 
-    lspcMutex->unlock();
     return true;
 }
 
@@ -1098,6 +1450,336 @@ void LSPC_Callback_StoreParametersAck(const std::vector<uint8_t>& payload)
     StoreParametersResponse.push(msgRaw->acknowledged);
 }
 
+void reconfigureModifyParameter(std::string type, std::string param, std::string value, std::shared_ptr<std::timed_mutex> lspcMutex, std::shared_ptr<lspc::Socket *> lspcObj)
+{
+    kugle_srvs::SetParameter::Request req;
+    kugle_srvs::SetParameter::Response res;
+
+    req.type = type;
+    req.param = param;
+    req.value = value;
+    if (ROS_Service_SetParameter(req, res, lspcMutex, lspcObj))
+    {
+        if (res.acknowledged)
+            ROS_INFO("%s.%s parameter updated successfully", type.c_str(), param.c_str());
+        else
+            ROS_WARN("%s.%s parameter could not be updated", type.c_str(), param.c_str());
+    }
+    else
+    {
+        ROS_ERROR("Failed to call service SetParameter - does the firmware match the driver (check 'MessageTypes.h')?");
+    }
+}
+
+std::string reconfigureRetrieveParameter(std::string type, std::string param, std::shared_ptr<std::timed_mutex> lspcMutex, std::shared_ptr<lspc::Socket *> lspcObj)
+{
+    kugle_srvs::GetParameter::Request req;
+    kugle_srvs::GetParameter::Response res;
+
+    req.type = type;
+    req.param = param;
+    if (ROS_Service_GetParameter(req, res, lspcMutex, lspcObj))
+    {
+        ROS_INFO("%s.%s parameter retrieved successfully", type.c_str(), param.c_str());
+        return res.value;
+    }
+    else
+    {
+        ROS_ERROR("Failed to call service GetParameter - does the firmware match the driver (check 'MessageTypes.h')?");
+    }
+
+    return "";
+}
+
+float Parse2Float(std::string str)
+{
+    float value;
+    try {
+        value = std::stof(str);
+    }
+    catch (std::invalid_argument &e) {
+        return 0;
+    }  // value could not be parsed (eg. is not a number)
+    catch (std::out_of_range &e) {
+        return 0;
+    }
+    return value;
+}
+
+float Parse2RoundedFloat(std::string str)
+{
+    float value;
+    try {
+        value = std::stof(str);
+        value = roundf(value * 1000) / 1000; // round to 3 decimals
+    }
+    catch (std::invalid_argument &e) {
+        return 0;
+    }  // value could not be parsed (eg. is not a number)
+    catch (std::out_of_range &e) {
+        return 0;
+    }
+    return value;
+}
+
+int Parse2Int(std::string str)
+{
+    int value;
+    try {
+        value = std::stoi(str);
+    }
+    catch (std::invalid_argument &e) {
+        return 0;
+    }  // value could not be parsed (eg. is not a number)
+    catch (std::out_of_range &e) {
+        return 0;
+    }
+    return value;
+}
+
+bool Parse2Bool(std::string str)
+{
+    if (!str.compare("true"))
+        return true;
+    else if (!str.compare("false"))
+        return false;
+    else {
+        return false;
+    }
+}
+
+template <typename T>
+std::string to_string_with_precision(const T a_value, const int n = 6)
+{
+    std::ostringstream out;
+    out.precision(n);
+    out << std::fixed << a_value;
+    return out.str();
+}
+
+void reconfigureCallback(kugle_driver::ParametersConfig &config, uint32_t level, std::shared_ptr<std::timed_mutex> lspcMutex, std::shared_ptr<lspc::Socket *> lspcObj)
+{
+    reconfigureMutex.lock();
+    ROS_DEBUG("Reconfigure Request");
+
+    if (config.EnableDumpMessages != reconfigureConfig.EnableDumpMessages) reconfigureModifyParameter("debug", "EnableDumpMessages", config.EnableDumpMessages ? "true" : "false", lspcMutex, lspcObj);
+    if (config.EnableRawSensorOutput != reconfigureConfig.EnableRawSensorOutput) reconfigureModifyParameter("debug", "EnableRawSensorOutput", config.EnableRawSensorOutput ? "true" : "false", lspcMutex, lspcObj);
+    if (config.DisableMotorOutput != reconfigureConfig.DisableMotorOutput) reconfigureModifyParameter("debug", "DisableMotorOutput", config.DisableMotorOutput ? "true" : "false", lspcMutex, lspcObj);
+
+    if (config.IndependentHeading != reconfigureConfig.IndependentHeading) reconfigureModifyParameter("behavioural", "IndependentHeading", config.IndependentHeading ? "true" : "false", lspcMutex, lspcObj);
+    if (config.SineTestEnabled != reconfigureConfig.SineTestEnabled) reconfigureModifyParameter("behavioural", "SineTestEnabled", config.SineTestEnabled ? "true" : "false", lspcMutex, lspcObj);
+    if (config.PowerButtonMode != reconfigureConfig.PowerButtonMode) reconfigureModifyParameter("behavioural", "PowerButtonMode", std::to_string(config.PowerButtonMode), lspcMutex, lspcObj);
+
+    if (config.type != reconfigureConfig.type) reconfigureModifyParameter("controller", "type", std::to_string(config.type), lspcMutex, lspcObj);
+    if (config.mode != reconfigureConfig.mode) reconfigureModifyParameter("controller", "mode", std::to_string(config.mode), lspcMutex, lspcObj);
+    if (config.DisableQdot != reconfigureConfig.DisableQdot) reconfigureModifyParameter("controller", "DisableQdot", config.DisableQdot ? "true" : "false", lspcMutex, lspcObj);
+    if (config.DisableQdotInEquivalentControl != reconfigureConfig.DisableQdotInEquivalentControl) reconfigureModifyParameter("controller", "DisableQdotInEquivalentControl", config.DisableQdotInEquivalentControl ? "true" : "false", lspcMutex, lspcObj);
+    if (config.DisableOmegaXYInEquivalentControl != reconfigureConfig.DisableOmegaXYInEquivalentControl) reconfigureModifyParameter("controller", "DisableOmegaXYInEquivalentControl", config.DisableOmegaXYInEquivalentControl ? "true" : "false", lspcMutex, lspcObj);
+    if (config.ManifoldType != reconfigureConfig.ManifoldType) reconfigureModifyParameter("controller", "ManifoldType", std::to_string(config.ManifoldType), lspcMutex, lspcObj);
+    if (config.EquivalentControl != reconfigureConfig.EquivalentControl) reconfigureModifyParameter("controller", "EquivalentControl", config.EquivalentControl ? "true" : "false", lspcMutex, lspcObj);
+
+    if (config.K_x != reconfigureConfig.K_x) reconfigureModifyParameter("controller", "K", std::to_string(config.K_x) + " " + std::to_string(config.K_y) + " " + std::to_string(config.K_z), lspcMutex, lspcObj);
+    if (config.K_y != reconfigureConfig.K_y) reconfigureModifyParameter("controller", "K", std::to_string(config.K_x) + " " + std::to_string(config.K_y) + " " + std::to_string(config.K_z), lspcMutex, lspcObj);
+    if (config.K_z != reconfigureConfig.K_z) reconfigureModifyParameter("controller", "K", std::to_string(config.K_x) + " " + std::to_string(config.K_y) + " " + std::to_string(config.K_z), lspcMutex, lspcObj);
+    if (config.K != reconfigureConfig.K) {
+        reconfigureModifyParameter("controller", "K", std::to_string(config.K), lspcMutex, lspcObj);
+        config.K_x = config.K;
+        config.K_y = config.K;
+        config.K_z = config.K;
+    }
+
+    if (config.eta_x != reconfigureConfig.eta_x) reconfigureModifyParameter("controller", "eta", std::to_string(config.eta_x) + " " + std::to_string(config.eta_y) + " " + std::to_string(config.eta_z), lspcMutex, lspcObj);
+    if (config.eta_y != reconfigureConfig.eta_y) reconfigureModifyParameter("controller", "eta", std::to_string(config.eta_x) + " " + std::to_string(config.eta_y) + " " + std::to_string(config.eta_z), lspcMutex, lspcObj);
+    if (config.eta_z != reconfigureConfig.eta_z) reconfigureModifyParameter("controller", "eta", std::to_string(config.eta_x) + " " + std::to_string(config.eta_y) + " " + std::to_string(config.eta_z), lspcMutex, lspcObj);
+    if (config.eta != reconfigureConfig.eta) {
+        reconfigureModifyParameter("controller", "eta", std::to_string(config.eta), lspcMutex, lspcObj);
+        config.eta_x = config.eta;
+        config.eta_y = config.eta;
+        config.eta_z = config.eta;
+    }
+
+    if (config.epsilon_x != reconfigureConfig.epsilon_x) reconfigureModifyParameter("controller", "epsilon", std::to_string(config.epsilon_x) + " " + std::to_string(config.epsilon_y) + " " + std::to_string(config.epsilon_z), lspcMutex, lspcObj);
+    if (config.epsilon_y != reconfigureConfig.epsilon_y) reconfigureModifyParameter("controller", "epsilon", std::to_string(config.epsilon_x) + " " + std::to_string(config.epsilon_y) + " " + std::to_string(config.epsilon_z), lspcMutex, lspcObj);
+    if (config.epsilon_z != reconfigureConfig.epsilon_z) reconfigureModifyParameter("controller", "epsilon", std::to_string(config.epsilon_x) + " " + std::to_string(config.epsilon_y) + " " + std::to_string(config.epsilon_z), lspcMutex, lspcObj);
+    if (config.epsilon != reconfigureConfig.epsilon) {
+        reconfigureModifyParameter("controller", "epsilon", std::to_string(config.epsilon), lspcMutex, lspcObj);
+        config.epsilon_x = config.epsilon;
+        config.epsilon_y = config.epsilon;
+        config.epsilon_z = config.epsilon;
+    }
+
+    if (config.Kv_x != reconfigureConfig.Kv_x) reconfigureModifyParameter("controller", "Kv_x", std::to_string(config.Kv_x), lspcMutex, lspcObj);
+    if (config.Kv_y != reconfigureConfig.Kv_y) reconfigureModifyParameter("controller", "Kv_y", std::to_string(config.Kv_y), lspcMutex, lspcObj);
+    if (config.Kvi_x != reconfigureConfig.Kvi_x) reconfigureModifyParameter("controller", "Kvi_x", std::to_string(config.Kvi_x), lspcMutex, lspcObj);
+    if (config.Kvi_y != reconfigureConfig.Kvi_y) reconfigureModifyParameter("controller", "Kvi_y", std::to_string(config.Kvi_y), lspcMutex, lspcObj);
+    if (config.gamma != reconfigureConfig.gamma) reconfigureModifyParameter("controller", "gamma", std::to_string(config.gamma), lspcMutex, lspcObj);
+
+    if (config.AngularVelocityClampsEnabled != reconfigureConfig.AngularVelocityClampsEnabled) reconfigureModifyParameter("controller", "AngularVelocityClampsEnabled", config.AngularVelocityClampsEnabled ? "true" : "false", lspcMutex, lspcObj);
+    if (config.AngularVelocityClamp_x != reconfigureConfig.AngularVelocityClamp_x) reconfigureModifyParameter("controller", "AngularVelocityClamps", std::to_string(config.AngularVelocityClamp_x) + " " + std::to_string(config.AngularVelocityClamp_y) + " " + std::to_string(config.AngularVelocityClamp_z), lspcMutex, lspcObj);
+    if (config.AngularVelocityClamp_y != reconfigureConfig.AngularVelocityClamp_y) reconfigureModifyParameter("controller", "AngularVelocityClamps", std::to_string(config.AngularVelocityClamp_x) + " " + std::to_string(config.AngularVelocityClamp_y) + " " + std::to_string(config.AngularVelocityClamp_z), lspcMutex, lspcObj);
+    if (config.AngularVelocityClamp_z != reconfigureConfig.AngularVelocityClamp_z) reconfigureModifyParameter("controller", "AngularVelocityClamps", std::to_string(config.AngularVelocityClamp_x) + " " + std::to_string(config.AngularVelocityClamp_y) + " " + std::to_string(config.AngularVelocityClamp_z), lspcMutex, lspcObj);
+
+    if (config.VelocityControl_AccelerationLimit != reconfigureConfig.VelocityControl_AccelerationLimit) reconfigureModifyParameter("controller", "VelocityControl_AccelerationLimit", std::to_string(config.VelocityControl_AccelerationLimit), lspcMutex, lspcObj);
+    if (config.VelocityControl_UseOmegaRef != reconfigureConfig.VelocityControl_UseOmegaRef) reconfigureModifyParameter("controller", "VelocityControl_UseOmegaRef", config.VelocityControl_UseOmegaRef ? "true" : "false", lspcMutex, lspcObj);
+
+    if (config.VelocityController_MaxTilt != reconfigureConfig.VelocityController_MaxTilt) reconfigureModifyParameter("controller", "VelocityController_MaxTilt", std::to_string(config.VelocityController_MaxTilt), lspcMutex, lspcObj);
+    if (config.VelocityController_MaxIntegralCorrection != reconfigureConfig.VelocityController_MaxIntegralCorrection) reconfigureModifyParameter("controller", "VelocityController_MaxIntegralCorrection", std::to_string(config.VelocityController_MaxIntegralCorrection), lspcMutex, lspcObj);
+    if (config.VelocityController_VelocityClamp != reconfigureConfig.VelocityController_VelocityClamp) reconfigureModifyParameter("controller", "VelocityController_VelocityClamp", std::to_string(config.VelocityController_VelocityClamp), lspcMutex, lspcObj);
+    if (config.VelocityController_IntegralGain != reconfigureConfig.VelocityController_IntegralGain) reconfigureModifyParameter("controller", "VelocityController_IntegralGain", std::to_string(config.VelocityController_IntegralGain), lspcMutex, lspcObj);
+    if (config.VelocityController_AngleLPFtau != reconfigureConfig.VelocityController_AngleLPFtau) reconfigureModifyParameter("controller", "VelocityController_AngleLPFtau", std::to_string(config.VelocityController_AngleLPFtau), lspcMutex, lspcObj);if (config.VelocityController_OmegaLPFtau != reconfigureConfig.VelocityController_OmegaLPFtau) reconfigureModifyParameter("controller", "VelocityController_OmegaLPFtau", std::to_string(config.VelocityController_OmegaLPFtau), lspcMutex, lspcObj);
+
+    if (config.UseCoRvelocity != reconfigureConfig.UseCoRvelocity) reconfigureModifyParameter("estimator", "UseCoRvelocity", config.UseCoRvelocity ? "true" : "false", lspcMutex, lspcObj);
+    if (config.sigma2_bias != reconfigureConfig.sigma2_bias) reconfigureModifyParameter("estimator", "sigma2_bias", to_string_with_precision(powf(10, -config.sigma2_bias),10), lspcMutex, lspcObj);
+    if (config.sigma2_omega != reconfigureConfig.sigma2_omega) reconfigureModifyParameter("estimator", "sigma2_omega", to_string_with_precision(powf(10, -config.sigma2_omega),10), lspcMutex, lspcObj);
+    if (config.sigma2_heading != reconfigureConfig.sigma2_heading) reconfigureModifyParameter("estimator", "sigma2_heading", to_string_with_precision(powf(10, -config.sigma2_heading),10), lspcMutex, lspcObj);
+    if (config.SensorDrivenQEKF != reconfigureConfig.SensorDrivenQEKF) reconfigureModifyParameter("estimator", "SensorDrivenQEKF", config.SensorDrivenQEKF ? "true" : "false", lspcMutex, lspcObj);
+    if (config.EstimateBias != reconfigureConfig.EstimateBias) reconfigureModifyParameter("estimator", "EstimateBias", config.EstimateBias ? "true" : "false", lspcMutex, lspcObj);
+    if (config.GyroscopeTrustFactor != reconfigureConfig.GyroscopeTrustFactor) reconfigureModifyParameter("estimator", "GyroscopeTrustFactor", std::to_string(config.GyroscopeTrustFactor), lspcMutex, lspcObj);
+    if (config.EnableVelocityLPF != reconfigureConfig.EnableVelocityLPF) reconfigureModifyParameter("estimator", "EnableVelocityLPF", config.EnableVelocityLPF ? "true" : "false", lspcMutex, lspcObj);
+    if (config.EnableWheelSlipDetector != reconfigureConfig.EnableWheelSlipDetector) reconfigureModifyParameter("estimator", "EnableWheelSlipDetector", config.EnableWheelSlipDetector ? "true" : "false", lspcMutex, lspcObj);
+    if (config.UseVelocityEstimator != reconfigureConfig.UseVelocityEstimator) reconfigureModifyParameter("estimator", "UseVelocityEstimator", config.UseVelocityEstimator ? "true" : "false", lspcMutex, lspcObj);
+    if (config.UseQdotInVelocityEstimator != reconfigureConfig.UseQdotInVelocityEstimator) reconfigureModifyParameter("estimator", "UseQdotInVelocityEstimator", config.UseQdotInVelocityEstimator ? "true" : "false", lspcMutex, lspcObj);
+    if (config.eta_encoder != reconfigureConfig.eta_encoder) reconfigureModifyParameter("estimator", "eta_encoder", std::to_string(config.eta_encoder), lspcMutex, lspcObj);
+    if (config.eta_accelerometer != reconfigureConfig.eta_accelerometer) reconfigureModifyParameter("estimator", "eta_accelerometer", std::to_string(config.eta_accelerometer), lspcMutex, lspcObj);
+    if (config.var_acc_bias != reconfigureConfig.var_acc_bias) reconfigureModifyParameter("estimator", "var_acc_bias", to_string_with_precision(powf(10, -config.var_acc_bias),10), lspcMutex, lspcObj);
+    if (config.var_acceleration != reconfigureConfig.var_acceleration) reconfigureModifyParameter("estimator", "var_acceleration", to_string_with_precision(powf(10, -config.var_acceleration),10), lspcMutex, lspcObj);
+
+    if (config.l != reconfigureConfig.l) reconfigureModifyParameter("model", "l", std::to_string(config.l), lspcMutex, lspcObj);
+    if (config.CoR != reconfigureConfig.CoR) reconfigureModifyParameter("model", "CoR", std::to_string(config.CoR), lspcMutex, lspcObj);
+    if (config.SaturationTorqueOfMaxOutputTorque != reconfigureConfig.SaturationTorqueOfMaxOutputTorque) reconfigureModifyParameter("model", "SaturationTorqueOfMaxOutputTorque", std::to_string(config.SaturationTorqueOfMaxOutputTorque), lspcMutex, lspcObj);
+
+    MATLAB_log = config.MATLAB_log;
+
+    reconfigureConfig = config;
+    reconfigureMutex.unlock();
+    reconfigureServer->updateConfig(reconfigureConfig);
+}
+
+void LoadParamsIntoReconfigure(std::shared_ptr<std::timed_mutex> lspcMutex, std::shared_ptr<lspc::Socket *> lspcObj)
+{
+    std::lock_guard<std::mutex> lock(reconfigureMutex);
+
+    reconfigureConfig.EnableDumpMessages = Parse2Bool(reconfigureRetrieveParameter("debug", "EnableDumpMessages", lspcMutex, lspcObj));
+    reconfigureConfig.EnableRawSensorOutput = Parse2Bool(reconfigureRetrieveParameter("debug", "EnableRawSensorOutput", lspcMutex, lspcObj));
+    reconfigureConfig.DisableMotorOutput = Parse2Bool(reconfigureRetrieveParameter("debug", "DisableMotorOutput", lspcMutex, lspcObj));
+
+    reconfigureConfig.IndependentHeading = Parse2Bool(reconfigureRetrieveParameter("behavioural", "IndependentHeading", lspcMutex, lspcObj));
+    reconfigureConfig.SineTestEnabled = Parse2Bool(reconfigureRetrieveParameter("behavioural", "SineTestEnabled", lspcMutex, lspcObj));
+    reconfigureConfig.PowerButtonMode = int(ParsePowerButtonMode2(reconfigureRetrieveParameter("behavioural", "PowerButtonMode", lspcMutex, lspcObj)));
+
+    reconfigureConfig.mode = int(ParseControllerMode2(reconfigureRetrieveParameter("controller", "mode", lspcMutex, lspcObj)));
+    reconfigureConfig.type = int(ParseControllerType2(reconfigureRetrieveParameter("controller", "type", lspcMutex, lspcObj)));
+    reconfigureConfig.DisableQdot = Parse2Bool(reconfigureRetrieveParameter("controller", "DisableQdot", lspcMutex, lspcObj));
+    reconfigureConfig.DisableQdotInEquivalentControl = Parse2Bool(reconfigureRetrieveParameter("controller", "DisableQdotInEquivalentControl", lspcMutex, lspcObj));
+    reconfigureConfig.DisableOmegaXYInEquivalentControl = Parse2Bool(reconfigureRetrieveParameter("controller", "DisableOmegaXYInEquivalentControl", lspcMutex, lspcObj));
+    reconfigureConfig.ManifoldType = int(ParseManifoldType2(reconfigureRetrieveParameter("controller", "ManifoldType", lspcMutex, lspcObj)));
+    reconfigureConfig.EquivalentControl = Parse2Bool(reconfigureRetrieveParameter("controller", "EquivalentControl", lspcMutex, lspcObj));
+
+    // Load K
+    {
+        std::istringstream iss(reconfigureRetrieveParameter("controller", "K", lspcMutex, lspcObj));
+        std::vector<std::string> values((std::istream_iterator<std::string>(iss)),  // split string by spaces
+                                        std::istream_iterator<std::string>());
+        reconfigureConfig.K = 0;
+        if (values.size() == 3) {
+            reconfigureConfig.K_x = Parse2RoundedFloat(values.at(0));
+            reconfigureConfig.K_y = Parse2RoundedFloat(values.at(1));
+            reconfigureConfig.K_z = Parse2RoundedFloat(values.at(2));
+        }
+    }
+
+    // Load eta
+    {
+        std::istringstream iss(reconfigureRetrieveParameter("controller", "eta", lspcMutex, lspcObj));
+        std::vector<std::string> values((std::istream_iterator<std::string>(iss)),  // split string by spaces
+                                        std::istream_iterator<std::string>());
+        reconfigureConfig.eta = 0;
+        if (values.size() == 3) {
+            reconfigureConfig.eta_x = Parse2RoundedFloat(values.at(0));
+            reconfigureConfig.eta_y = Parse2RoundedFloat(values.at(1));
+            reconfigureConfig.eta_z = Parse2RoundedFloat(values.at(2));
+        }
+    }
+
+    // Load epsilon
+    {
+        std::istringstream iss(reconfigureRetrieveParameter("controller", "epsilon", lspcMutex, lspcObj));
+        std::vector<std::string> values((std::istream_iterator<std::string>(iss)),  // split string by spaces
+                                        std::istream_iterator<std::string>());
+        reconfigureConfig.epsilon = 0;
+        if (values.size() == 3) {
+            reconfigureConfig.epsilon_x = Parse2RoundedFloat(values.at(0));
+            reconfigureConfig.epsilon_y = Parse2RoundedFloat(values.at(1));
+            reconfigureConfig.epsilon_z = Parse2RoundedFloat(values.at(2));
+        }
+    }
+
+    reconfigureConfig.Kv_x = Parse2RoundedFloat(reconfigureRetrieveParameter("controller", "Kv_x", lspcMutex, lspcObj));
+    reconfigureConfig.Kv_y = Parse2RoundedFloat(reconfigureRetrieveParameter("controller", "Kv_y", lspcMutex, lspcObj));
+    reconfigureConfig.Kvi_x = Parse2RoundedFloat(reconfigureRetrieveParameter("controller", "Kvi_x", lspcMutex, lspcObj));
+    reconfigureConfig.Kvi_y = Parse2RoundedFloat(reconfigureRetrieveParameter("controller", "Kvi_y", lspcMutex, lspcObj));
+    reconfigureConfig.gamma = Parse2RoundedFloat(reconfigureRetrieveParameter("controller", "gamma", lspcMutex, lspcObj));
+
+    // Load angular velocity clamps
+    {
+        std::istringstream iss(reconfigureRetrieveParameter("controller", "AngularVelocityClamps", lspcMutex, lspcObj));
+        std::vector<std::string> values((std::istream_iterator<std::string>(iss)),  // split string by spaces
+                                        std::istream_iterator<std::string>());
+        reconfigureConfig.K = 0;
+        if (values.size() == 3) {
+            reconfigureConfig.AngularVelocityClamp_x = Parse2RoundedFloat(values.at(0));
+            reconfigureConfig.AngularVelocityClamp_y = Parse2RoundedFloat(values.at(1));
+            reconfigureConfig.AngularVelocityClamp_z = Parse2RoundedFloat(values.at(2));
+        }
+    }
+    reconfigureConfig.AngularVelocityClampsEnabled = Parse2Bool(reconfigureRetrieveParameter("controller", "AngularVelocityClampsEnabled", lspcMutex, lspcObj));
+
+    reconfigureConfig.VelocityControl_AccelerationLimit = Parse2RoundedFloat(reconfigureRetrieveParameter("controller", "VelocityControl_AccelerationLimit", lspcMutex, lspcObj));
+    reconfigureConfig.VelocityControl_UseOmegaRef = Parse2Bool(reconfigureRetrieveParameter("controller", "VelocityControl_UseOmegaRef", lspcMutex, lspcObj));
+
+    reconfigureConfig.VelocityController_MaxTilt = Parse2RoundedFloat(reconfigureRetrieveParameter("controller", "VelocityController_MaxTilt", lspcMutex, lspcObj));
+    reconfigureConfig.VelocityController_MaxIntegralCorrection = Parse2RoundedFloat(reconfigureRetrieveParameter("controller", "VelocityController_MaxIntegralCorrection", lspcMutex, lspcObj));
+    reconfigureConfig.VelocityController_VelocityClamp = Parse2RoundedFloat(reconfigureRetrieveParameter("controller", "VelocityController_VelocityClamp", lspcMutex, lspcObj));
+    reconfigureConfig.VelocityController_IntegralGain = Parse2RoundedFloat(reconfigureRetrieveParameter("controller", "VelocityController_IntegralGain", lspcMutex, lspcObj));
+    reconfigureConfig.VelocityController_AngleLPFtau = Parse2RoundedFloat(reconfigureRetrieveParameter("controller", "VelocityController_AngleLPFtau", lspcMutex, lspcObj));
+    reconfigureConfig.VelocityController_OmegaLPFtau = Parse2RoundedFloat(reconfigureRetrieveParameter("controller", "VelocityController_OmegaLPFtau", lspcMutex, lspcObj));
+
+    reconfigureConfig.UseCoRvelocity = Parse2Bool(reconfigureRetrieveParameter("estimator", "UseCoRvelocity", lspcMutex, lspcObj));
+
+    try {
+        reconfigureConfig.sigma2_bias = -log10f(Parse2Float(reconfigureRetrieveParameter("estimator", "sigma2_bias", lspcMutex, lspcObj)));
+        if (std::isinf(reconfigureConfig.sigma2_bias)) reconfigureConfig.sigma2_bias = 0;
+
+        reconfigureConfig.sigma2_omega = -log10f(Parse2Float(reconfigureRetrieveParameter("estimator", "sigma2_omega", lspcMutex, lspcObj)));
+        if (std::isinf(reconfigureConfig.sigma2_omega)) reconfigureConfig.sigma2_omega = 0;
+
+        reconfigureConfig.sigma2_heading = -log10f(Parse2Float(reconfigureRetrieveParameter("estimator", "sigma2_heading", lspcMutex, lspcObj)));
+        if (std::isinf(reconfigureConfig.sigma2_heading)) reconfigureConfig.sigma2_heading = 0;
+
+        reconfigureConfig.var_acc_bias = -log10f(Parse2Float(reconfigureRetrieveParameter("estimator", "var_acc_bias", lspcMutex, lspcObj)));
+        if (std::isinf(reconfigureConfig.var_acc_bias)) reconfigureConfig.var_acc_bias = 0;
+
+        reconfigureConfig.var_acceleration = -log10f(Parse2Float(reconfigureRetrieveParameter("estimator", "var_acceleration", lspcMutex, lspcObj)));
+        if (std::isinf(reconfigureConfig.var_acceleration)) reconfigureConfig.var_acceleration = 0;
+    } catch (...)  {}
+    reconfigureConfig.SensorDrivenQEKF = Parse2Bool(reconfigureRetrieveParameter("estimator", "SensorDrivenQEKF", lspcMutex, lspcObj));
+    reconfigureConfig.EstimateBias = Parse2Bool(reconfigureRetrieveParameter("estimator", "EstimateBias", lspcMutex, lspcObj));
+    reconfigureConfig.GyroscopeTrustFactor = Parse2RoundedFloat(reconfigureRetrieveParameter("estimator", "GyroscopeTrustFactor", lspcMutex, lspcObj));
+    reconfigureConfig.EnableVelocityLPF = Parse2Bool(reconfigureRetrieveParameter("estimator", "EnableVelocityLPF", lspcMutex, lspcObj));
+    reconfigureConfig.EnableWheelSlipDetector = Parse2Bool(reconfigureRetrieveParameter("estimator", "EnableWheelSlipDetector", lspcMutex, lspcObj));
+    reconfigureConfig.UseVelocityEstimator = Parse2Bool(reconfigureRetrieveParameter("estimator", "UseVelocityEstimator", lspcMutex, lspcObj));
+    reconfigureConfig.UseQdotInVelocityEstimator = Parse2Bool(reconfigureRetrieveParameter("estimator", "UseQdotInVelocityEstimator", lspcMutex, lspcObj));
+    reconfigureConfig.eta_encoder = Parse2RoundedFloat(reconfigureRetrieveParameter("estimator", "eta_encoder", lspcMutex, lspcObj));
+    reconfigureConfig.eta_accelerometer = Parse2RoundedFloat(reconfigureRetrieveParameter("estimator", "eta_accelerometer", lspcMutex, lspcObj));
+
+    reconfigureConfig.l = Parse2RoundedFloat(reconfigureRetrieveParameter("model", "l", lspcMutex, lspcObj));
+    reconfigureConfig.CoR = Parse2RoundedFloat(reconfigureRetrieveParameter("model", "CoR", lspcMutex, lspcObj));
+    reconfigureConfig.SaturationTorqueOfMaxOutputTorque = Parse2RoundedFloat(reconfigureRetrieveParameter("model", "SaturationTorqueOfMaxOutputTorque", lspcMutex, lspcObj));
+
+    reconfigureServer->updateConfig(reconfigureConfig);
+}
+
+
 bool ROS_Service_CalibrateIMU(kugle_srvs::CalibrateIMU::Request &req, kugle_srvs::CalibrateIMU::Response &res, std::shared_ptr<std::timed_mutex> lspcMutex, std::shared_ptr<lspc::Socket *> lspcObj)
 {
     if (!lspcMutex->try_lock_for(std::chrono::milliseconds(100))) return false; // could not get lock
@@ -1112,18 +1794,17 @@ bool ROS_Service_CalibrateIMU(kugle_srvs::CalibrateIMU::Request &req, kugle_srvs
     msg.magic_key = 0x12345678;
     std::vector<uint8_t> payloadPacked((uint8_t *)&msg, (uint8_t *)&msg+sizeof(msg));
     (*lspcObj)->send(lspc::MessageTypesFromPC::CalibrateIMU, payloadPacked);
+    lspcMutex->unlock();
 
     /* Wait for response */
     bool acknowledged;
-    if (!CalibrateIMUResponse.pop(acknowledged, 2)) { // 2 seconds timeout
+    if (!CalibrateIMUResponse.pop(acknowledged, 1)) { // 1 seconds timeout
         ROS_DEBUG("Calibrate IMU: Response timeout");
-        lspcMutex->unlock();
         return false; // timeout
     }
 
     res.acknowledged = acknowledged;
 
-    lspcMutex->unlock();
     return true;
 }
 
@@ -1141,18 +1822,17 @@ bool ROS_Service_CalibrateAccelerometer(kugle_srvs::CalibrateAccelerometer::Requ
     msg.magic_key = 0x12345678;
     std::vector<uint8_t> payloadPacked((uint8_t *)&msg, (uint8_t *)&msg+sizeof(msg));
     (*lspcObj)->send(lspc::MessageTypesFromPC::CalibrateIMU, payloadPacked);
+    lspcMutex->unlock();
 
     /* Wait for response */
     bool acknowledged;
     if (!CalibrateIMUResponse.pop(acknowledged, 2)) { // 2 seconds timeout
         ROS_DEBUG("Calibrate IMU: Response timeout");
-        lspcMutex->unlock();
         return false; // timeout
     }
 
     res.acknowledged = acknowledged;
 
-    lspcMutex->unlock();
     return true;
 }
 
@@ -1182,18 +1862,17 @@ bool ROS_Service_RestartController(kugle_srvs::RestartController::Request &req, 
     msg.magic_key = 0x12345678;
     std::vector<uint8_t> payloadPacked((uint8_t *)&msg, (uint8_t *)&msg+sizeof(msg));
     (*lspcObj)->send(lspc::MessageTypesFromPC::RestartController, payloadPacked);
+    lspcMutex->unlock();
 
     /* Wait for response */
     bool acknowledged;
     if (!RestartControllerResponse.pop(acknowledged, 2)) { // 2 seconds timeout
         ROS_DEBUG("Restart Controller: Response timeout");
-        lspcMutex->unlock();
         return false; // timeout
     }
 
     res.acknowledged = acknowledged;
 
-    lspcMutex->unlock();
     return true;
 }
 
@@ -1224,10 +1903,10 @@ bool ROS_Service_Reboot(kugle_srvs::Reboot::Request &req, kugle_srvs::Reboot::Re
     std::vector<uint8_t> empty;
     CalibrateIMUResponse.clear();
     (*lspcObj)->send(lspc::MessageTypesFromPC::Reboot, empty);
+    lspcMutex->unlock();
 
     res.acknowledged = true;
 
-    lspcMutex->unlock();
     return true;
 }
 
@@ -1246,10 +1925,10 @@ bool ROS_Service_EnterBootloader(kugle_srvs::EnterBootloader::Request &req, kugl
     std::vector<uint8_t> empty;
     CalibrateIMUResponse.clear();
     (*lspcObj)->send(lspc::MessageTypesFromPC::EnterBootloader, empty);
+    lspcMutex->unlock();
 
     res.acknowledged = true;
 
-    lspcMutex->unlock();
     return true;
 }
 
@@ -1270,6 +1949,7 @@ void LSPC_ConnectionThread(boost::shared_ptr<ros::NodeHandle> n, std::string ser
     ros::Publisher pub_state_estimate = n->advertise<kugle_msgs::StateEstimate>("state_estimate", 50);
     ros::Publisher pub_mcu_debug = n->advertise<std_msgs::String>("mcu_debug", 50);
     ros::Publisher pub_mcu_load = n->advertise<std_msgs::String>("mcu_load", 50);
+    ros::Publisher pub_controller_debug = n->advertise<kugle_msgs::ControllerDebug>("controller_debug", 50);
 
     lspcMutex->lock();
     while (exitSignalObj.wait_for(std::chrono::milliseconds(1)) == std::future_status::timeout) {
@@ -1324,25 +2004,19 @@ void LSPC_ConnectionThread(boost::shared_ptr<ros::NodeHandle> n, std::string ser
         std::shared_ptr<std::ofstream> sensordumpFile = std::make_shared<std::ofstream>();
         std::shared_ptr<std::ofstream> covariancedumpFile = std::make_shared<std::ofstream>();
 
-        std::string dumpFilename = GetFormattedTimestampCurrent() + ".txt";
-        mathdumpFile->open(std::string(getenv("HOME")) + "/kugle_dump/" + dumpFilename, std::ofstream::trunc);
-        ROS_DEBUG_STREAM("Created mathdump file: ~/kugle_dump/" << dumpFilename);
-
-        sensordumpFile->open(std::string(getenv("HOME")) + "/kugle_dump/sensor/" + dumpFilename, std::ofstream::trunc);
-        ROS_DEBUG_STREAM("Created sensordump file: ~/kugle_dump/sensor/" << dumpFilename);
-
-        covariancedumpFile->open(std::string(getenv("HOME")) + "/kugle_dump/covariance/" + dumpFilename, std::ofstream::trunc);
-        ROS_DEBUG_STREAM("Created sensordump file: ~/kugle_dump/covariance/" << dumpFilename);
-
         lspcMutex->unlock();
 
-        /* Register callbacks */
+        /* Load parameters from board */
         (*lspcObj)->registerCallback(lspc::MessageTypesToPC::GetParameter, &LSPC_Callback_GetParameter);
         (*lspcObj)->registerCallback(lspc::MessageTypesToPC::SetParameterAck, &LSPC_Callback_SetParameterAck);
+        LoadParamsIntoReconfigure(lspcMutex, lspcObj);
+
+        /* Register callbacks */
         (*lspcObj)->registerCallback(lspc::MessageTypesToPC::DumpParameters, &LSPC_Callback_DumpParameters);
         (*lspcObj)->registerCallback(lspc::MessageTypesToPC::StoreParametersAck, &LSPC_Callback_StoreParametersAck);
         (*lspcObj)->registerCallback(lspc::MessageTypesToPC::SystemInfo, &LSPC_Callback_SystemInfo);
         (*lspcObj)->registerCallback(lspc::MessageTypesToPC::ControllerInfo, boost::bind(&LSPC_Callback_ControllerInfo, pub_controller_info, _1));
+        (*lspcObj)->registerCallback(lspc::MessageTypesToPC::ControllerDebug, boost::bind(&LSPC_Callback_ControllerDebug, pub_controller_debug, _1));
         (*lspcObj)->registerCallback(lspc::MessageTypesToPC::StateEstimates, boost::bind(&LSPC_Callback_StateEstimates, pub_odom, pub_state_estimate, tf_broadcaster, tf_listener, _1));
         (*lspcObj)->registerCallback(lspc::MessageTypesToPC::RawSensor_IMU_MPU9250, boost::bind(&LSPC_Callback_RawSensor_IMU_MPU9250, pub_imu, pub_mag, _1));
         (*lspcObj)->registerCallback(lspc::MessageTypesToPC::RawSensor_IMU_MTI200, &LSPC_Callback_RawSensor_IMU_MTI200);
@@ -1357,7 +2031,27 @@ void LSPC_ConnectionThread(boost::shared_ptr<ros::NodeHandle> n, std::string ser
         (*lspcObj)->registerCallback(lspc::MessageTypesToPC::CovarianceDump, boost::bind(&LSPC_Callback_ArrayDump, covariancedumpFile, _1));
         (*lspcObj)->registerCallback(lspc::MessageTypesToPC::Debug, boost::bind(&LSPC_Callback_Debug, pub_mcu_debug, _1));
 
+        bool MATLAB_log_prev = false;
         while ((*lspcObj)->isOpen() && ros::ok()) {
+            if (MATLAB_log != MATLAB_log_prev) {
+                if (MATLAB_log) {
+                    std::string dumpFilename = GetFormattedTimestampCurrent() + ".txt";
+                    mathdumpFile->open(std::string(getenv("HOME")) + "/kugle_dump/" + dumpFilename, std::ofstream::trunc);
+                    ROS_DEBUG_STREAM("Created mathdump file: ~/kugle_dump/" << dumpFilename);
+
+                    sensordumpFile->open(std::string(getenv("HOME")) + "/kugle_dump/sensor/" + dumpFilename, std::ofstream::trunc);
+                    ROS_DEBUG_STREAM("Created sensordump file: ~/kugle_dump/sensor/" << dumpFilename);
+
+                    covariancedumpFile->open(std::string(getenv("HOME")) + "/kugle_dump/covariance/" + dumpFilename, std::ofstream::trunc);
+                    ROS_DEBUG_STREAM("Created sensordump file: ~/kugle_dump/covariance/" << dumpFilename);
+                } else {
+                    mathdumpFile->close();
+                    sensordumpFile->close();
+                    covariancedumpFile->close();
+                }
+                MATLAB_log_prev = MATLAB_log;
+            }
+
             std::this_thread::sleep_for(std::chrono::milliseconds(20));
         }
         if (!ros::ok())
@@ -1368,6 +2062,8 @@ void LSPC_ConnectionThread(boost::shared_ptr<ros::NodeHandle> n, std::string ser
         delete(*lspcObj); // call destructor to disconnect completely and clean up used ressources
 
         mathdumpFile->close();
+        sensordumpFile->close();
+        covariancedumpFile->close();
     }
 }
 
@@ -1376,6 +2072,7 @@ int main(int argc, char **argv) {
 	ros::init(argc, argv, nodeName.c_str());
     boost::shared_ptr<ros::NodeHandle> n(new ros::NodeHandle);  // ros::NodeHandle n
 	ros::NodeHandle nParam("~"); // default/current namespace node handle
+    reconfigureMutex.lock();
 
 	ROS_DEBUG_STREAM("Starting Kugle driver...");
 
@@ -1384,21 +2081,20 @@ int main(int argc, char **argv) {
 		ROS_WARN_STREAM("Serial port not set (Parameter: serial_port). Defaults to: /dev/kugle");
 	}
 
-	/* Create LSPC connection thread */
+	/* Create common LSPC object */
     std::shared_ptr<std::timed_mutex> lspcMutex = std::make_shared<std::timed_mutex>();
     std::shared_ptr<lspc::Socket *> lspcObj = std::make_shared<lspc::Socket *>(nullptr);  // read about shared_ptr here: https://www.acodersjourney.com/top-10-dumb-mistakes-avoid-c-11-smart-pointers/
-
-    std::promise<void> exitSignal;
-    std::future<void> exitSignalObj = exitSignal.get_future();
-    std::thread connectionThread = std::thread(&LSPC_ConnectionThread, n, serial_port, lspcMutex, lspcObj, std::move(exitSignalObj));
 
     /* Configure subscribers */
     //std::shared_ptr<ros::Timer> reference_timeout_timer = std::make_shared<ros::Timer>(n->createTimer(ros::Duration(0.1), boost::bind(&ROS_Callback_Heartbeat, lspcMutex, lspcObj, reference_timeout_timer, _1))); // Configure 10 Hz heartbeat timer
     ros::Subscriber sub_cmd_vel = n->subscribe<geometry_msgs::Twist>("cmd_vel", 1, boost::bind(&ROS_Callback_cmd_vel, _1, lspcMutex, lspcObj));
     ros::Subscriber sub_cmd_vel_inertial = n->subscribe<geometry_msgs::Twist>("cmd_vel_inertial", 1, boost::bind(&ROS_Callback_cmd_vel_inertial, _1, lspcMutex, lspcObj));
+    ros::Subscriber sub_cmd_quaternion = n->subscribe<geometry_msgs::Quaternion>("cmd_quaternion", 1, boost::bind(&ROS_Callback_cmd_quaternion, _1, lspcMutex, lspcObj));
+    ros::Subscriber sub_cmd_combined = n->subscribe<kugle_msgs::BalanceControllerReference>("cmd_combined", 1, boost::bind(&ROS_Callback_cmd_combined, _1, lspcMutex, lspcObj));
+    ros::Subscriber sub_cmd_combined_inertial = n->subscribe<kugle_msgs::BalanceControllerReference>("cmd_combined_inertial", 1, boost::bind(&ROS_Callback_cmd_combined_inertial, _1, lspcMutex, lspcObj));
 
     /* Configure node services */
-	ros::ServiceServer serv_set_parameter = n->advertiseService<kugle_srvs::SetParameter::Request, kugle_srvs::SetParameter::Response>("/kugle/set_parameter", boost::bind(&ROS_Service_SetParameter, _1, _2, lspcMutex, lspcObj));
+    ros::ServiceServer serv_set_parameter = n->advertiseService<kugle_srvs::SetParameter::Request, kugle_srvs::SetParameter::Response>("/kugle/set_parameter", boost::bind(&ROS_Service_SetParameter, _1, _2, lspcMutex, lspcObj));
     ros::ServiceServer serv_get_parameter = n->advertiseService<kugle_srvs::GetParameter::Request, kugle_srvs::GetParameter::Response>("/kugle/get_parameter", boost::bind(&ROS_Service_GetParameter, _1, _2, lspcMutex, lspcObj));
     ros::ServiceServer serv_dump_parameters = n->advertiseService<kugle_srvs::DumpParameters::Request, kugle_srvs::DumpParameters::Response>("/kugle/dump_parameters", boost::bind(&ROS_Service_DumpParameters, _1, _2, lspcMutex, lspcObj));
     ros::ServiceServer serv_store_parameters = n->advertiseService<kugle_srvs::StoreParameters::Request, kugle_srvs::StoreParameters::Response>("/kugle/store_parameters", boost::bind(&ROS_Service_StoreParameters, _1, _2, lspcMutex, lspcObj));
@@ -1407,6 +2103,22 @@ int main(int argc, char **argv) {
     ros::ServiceServer serv_reboot = n->advertiseService<kugle_srvs::Reboot::Request, kugle_srvs::Reboot::Response>("/kugle/reboot", boost::bind(&ROS_Service_Reboot, _1, _2, lspcMutex, lspcObj));
     ros::ServiceServer serv_enter_bootloader = n->advertiseService<kugle_srvs::EnterBootloader::Request, kugle_srvs::EnterBootloader::Response>("/kugle/enter_bootloader", boost::bind(&ROS_Service_EnterBootloader, _1, _2, lspcMutex, lspcObj));
     ros::ServiceServer serv_restart_controller = n->advertiseService<kugle_srvs::RestartController::Request, kugle_srvs::RestartController::Response>("/kugle/restart_controller", boost::bind(&ROS_Service_RestartController, _1, _2, lspcMutex, lspcObj));
+
+    /* Enable dynamic reconfigure */
+    // Enable reconfigurable parameters - note that any parameters set on the node by roslaunch <param> tags will be seen by a dynamically reconfigurable node just as it would have been by a conventional node.
+    boost::recursive_mutex configMutex;
+    //std::shared_ptr<dynamic_reconfigure::Server<kugle_driver::ParametersConfig>> reconfigureServer = std::make_shared<dynamic_reconfigure::Server<kugle_driver::ParametersConfig>>(configMutex);
+    reconfigureServer = std::make_shared<dynamic_reconfigure::Server<kugle_driver::ParametersConfig>>(configMutex);
+    dynamic_reconfigure::Server<kugle_driver::ParametersConfig>::CallbackType f;
+    f = boost::bind(&reconfigureCallback, _1, _2, lspcMutex, lspcObj);
+    reconfigureServer->getConfigDefault(reconfigureConfig);
+    reconfigureMutex.unlock();
+    reconfigureServer->setCallback(f);
+
+	/* Create LSPC connection thread */
+    std::promise<void> exitSignal;
+    std::future<void> exitSignalObj = exitSignal.get_future();
+    std::thread connectionThread = std::thread(&LSPC_ConnectionThread, n, serial_port, lspcMutex, lspcObj, std::move(exitSignalObj));
 
     ros::spin();
 

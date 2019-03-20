@@ -13,4 +13,6 @@
 		<param name="serial_port" type="string" value="$(arg serial_port)" />
 	</node>
 
+	<node name="reconfigure_gui" pkg="rqt_reconfigure" type="rqt_reconfigure" required="false" args="kugle_driver" />
+
 </launch>

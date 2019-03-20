@@ -36,14 +36,14 @@
 		 <param name="port" type="string" value="2112" />
 		 <param name="timelimit" type="int" value="5" />
 		-->
-		<param name="device_number" type="int" value="0" /> 
+		<param name="device_number" type="int" value="1" /> 
 		<remap from="scan" to="laser/left/scan" />
 	</node>
 
 	<node name="sick_tim571_2050101_right" pkg="sick_tim" type="sick_tim551_2050001" respawn="false" output="screen">
 		<param name="frame_id" type="str" value="sick_right_link" />
 		<param name="range_max" type="double" value="25.0" />
-		<param name="device_number" type="int" value="1" /> 
+		<param name="device_number" type="int" value="0" /> 
 		<remap from="scan" to="laser/right/scan" />
 	</node>
 
