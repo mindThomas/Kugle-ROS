@@ -12,6 +12,7 @@ add_message_files(
   ControllerInfo.msg
   Encoders.msg
   StateEstimate.msg
+  powerManagmentInfo.msg
 )
 
 generate_messages(DEPENDENCIES geometry_msgs std_msgs actionlib_msgs)

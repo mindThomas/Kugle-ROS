@@ -1,13 +1,12 @@
 /* Copyright (C) 2018-2019 Thomas Jespersen, TKJ Electronics. All rights reserved.
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, version 3.
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the MIT License
  *
  * This program is distributed in the hope that it will be useful, but
  * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the MIT License for further details.
  *
  * Contact information
  * ------------------------------------------
@@ -38,6 +37,7 @@ namespace lspc
         } ValueType_t;
         typedef enum: uint8_t
         {
+            unknown = 0x00,
             debug = 0x01,
             behavioural,
             controller,
@@ -48,9 +48,10 @@ namespace lspc
 
         typedef enum: uint8_t
         {
-            EnableLogOutput = 0x01,
+            EnableDumpMessages = 0x01,
             EnableRawSensorOutput,
-            UseFilteredIMUinRawSensorOutput
+            UseFilteredIMUinRawSensorOutput,
+            DisableMotorOutput
         } debug_t;
 
         typedef enum: uint8_t
@@ -58,8 +59,8 @@ namespace lspc
             IndependentHeading = 0x01,
             YawVelocityBraking,
             StepTestEnabled,
-            VelocityControllerEnabled,
-            JoystickVelocityControl
+            SineTestEnabled,
+            PowerButtonMode
         } behavioural_t;
 
         typedef enum: uint8_t
@@ -74,19 +75,34 @@ namespace lspc
             TorqueRampUp,
             TorqueRampUpTime,
             DisableQdot,
+            DisableQdotInEquivalentControl,
+            DisableOmegaXYInEquivalentControl,
+            AngularVelocityClampsEnabled,
+            AngularVelocityClamps,
+            ManifoldType,
             K,
             Kx,
             Ky,
             Kz,
+            Kv_x,
+            Kv_y,
+            Kvi_x,
+            Kvi_y,
+            gamma,
             ContinousSwitching,
+            EquivalentControl,
             eta,
             epsilon,
             LQR_K,
             LQR_MaxYawError,
+            VelocityControl_AccelerationLimit,
+            VelocityControl_UseOmegaRef,
             VelocityController_MaxTilt,
             VelocityController_MaxIntegralCorrection,
             VelocityController_VelocityClamp,
-            VelocityController_IntegralGain
+            VelocityController_IntegralGain,
+            VelocityController_AngleLPFtau,
+            VelocityController_OmegaLPFtau
         } controller_t;
 
         typedef enum: uint8_t
@@ -99,9 +115,12 @@ namespace lspc
             CreateQdotFromQDifference,
             UseMadgwick,
             EstimateBias,
+            SensorDrivenQEKF,
             UseCoRvelocity,
             UseVelocityEstimator,
-            UseCOMestimateInVelocityEstimator,
+            EnableVelocityLPF,
+            EnableWheelSlipDetector,
+            UseQdotInVelocityEstimator,
             EstimateCOM,
             EstimateCOMminVelocity,
             MaxCOMDeviation,
@@ -111,9 +130,13 @@ namespace lspc
             cov_gyro_mpu,
             cov_acc_mpu,
             sigma2_bias,
-            QEKF_P_init_diagonal,
-            VelocityEstimator_P_init_diagonal,
-            COMEstimator_P_init_diagonal
+            sigma2_omega,
+            sigma2_heading,
+            GyroscopeTrustFactor,
+            eta_encoder,
+            eta_accelerometer,
+            var_acc_bias,
+            var_acceleration
         } estimator_t;
 
         typedef enum: uint8_t
@@ -122,6 +145,7 @@ namespace lspc
             COM_X,
             COM_Y,
             COM_Z,
+            CoR,
             g,
             rk,
             Mk,
@@ -140,7 +164,8 @@ namespace lspc
             Bvm,
             Bvb,
             EncoderTicksPrRev,
-            TicksPrRev
+            TicksPrRev,
+            SaturationTorqueOfMaxOutputTorque
         } model_t;
 
         typedef enum: uint8_t
@@ -160,7 +185,6 @@ namespace lspc
         typedef enum: uint8_t {
             OFF = 0x00,
             QUATERNION_CONTROL,
-            ANGULAR_VELOCITY_CONTROL,
             VELOCITY_CONTROL,
             PATH_FOLLOWING,
             UNKNOWN_MODE = 0xFF
@@ -168,9 +192,26 @@ namespace lspc
 
         typedef enum: uint8_t {
             POWER_OFF = 0x00, // default
-            START_STOP_QUATERNION_CONTROLLER,
-            START_STOP_VELOCITY_CONTROLLER
+            START_STOP_QUATERNION_CONTROL,
+            START_STOP_VELOCITY_CONTROL,
+            UNKNOWN_BUTTON_MODE = 0xFF
         } powerButtonMode_t;
+
+        typedef enum: uint8_t {
+            Q_DOT_INERTIAL_MANIFOLD = 0x00,
+            Q_DOT_BODY_MANIFOLD,
+            OMEGA_INERTIAL_MANIFOLD,
+            OMEGA_BODY_MANIFOLD, // default/suggested
+            VELOCITY_AND_Q_DOT_MANIFOLD,
+            UNKNOWN_MANIFOLD = 0xFF
+        } slidingManifoldType_t;
+
+        typedef enum: uint8_t {
+            BODY_FRAME = 0x00,
+            INERTIAL_FRAME,
+            HEADING_FRAME,
+            UNKNOWN_FRAME = 0xFF
+        } referenceFrame_t;
     }
 
     namespace MessageTypesFromPC
@@ -187,12 +228,11 @@ namespace lspc
             ControllerSettings = 0x12,
             YawCorrection = 0x20,
             PositionCorrection = 0x21,
-            AttitudeReference = 0x30,
-            AngularVelocityReference_Body = 0x31,
-            AngularVelocityReference_Inertial = 0x32,
-            VelocityReference_Inertial = 0x33,
-            VelocityReference_Heading = 0x34,
-            MPCpathReference = 0x35,
+            QuaternionReference = 0x30,
+            AngularVelocityReference = 0x31,
+            BalanceControllerReference = 0x32,
+            VelocityReference = 0x33,
+            MPCpathReference = 0x34,
             CalibrateIMU = 0xE0,
             CPUload = 0xE1,
             RestartController = 0xE2,
@@ -247,47 +287,47 @@ namespace lspc
                 float y;
                 float z;
             } q;
-        } AttitudeReference_t;
+        } QuaternionReference_t;
 
         typedef struct
         {
+            ParameterTypes::referenceFrame_t frame;
             struct omega_t
             {
                 float x;
                 float y;
                 float z;
             } omega;
-        } AngularVelocityReference_Body_t;
+        } AngularVelocityReference_t;
 
         typedef struct
         {
+            ParameterTypes::referenceFrame_t frame; // defines the frame of the angular velocity
+            struct q_t
+            {
+                float w;
+                float x;
+                float y;
+                float z;
+            } q;
             struct omega_t
             {
                 float x;
                 float y;
                 float z;
             } omega;
-        } AngularVelocityReference_Inertial_t;
+        } BalanceControllerReference_t;
 
         typedef struct
         {
+            ParameterTypes::referenceFrame_t frame;
             struct vel_t
             {
                 float x;
                 float y;
                 float yaw;
             } vel;
-        } VelocityReference_Inertial_t;
-
-        typedef struct
-        {
-            struct vel_t
-            {
-                float x;
-                float y;
-                float yaw;
-            } vel;
-        } VelocityReference_Heading_t;
+        } VelocityReference_t;
 
         typedef struct
         {
@@ -332,6 +372,8 @@ namespace lspc
             ControllerInfo = 0x12,
             AttitudeControllerInfo = 0x13,
             VelocityControllerInfo = 0x14,
+            ControllerDebug = 0x15,
+            powerManagment_info = 0x16,
             MPCinfo = 0x20,
             PredictedMPCtrajectory = 0x21,
             RawSensor_IMU_MPU9250 = 0x30,
@@ -429,6 +471,58 @@ namespace lspc
             float delivered_torque2;
             float delivered_torque3;
         } ControllerInfo_t;
+
+        typedef struct
+        {
+            float time;
+            struct orient_t
+            {
+                float roll;
+                float pitch;
+                float yaw;
+            } orient;
+            struct orient_ref_t
+            {
+                float roll;
+                float pitch;
+                float yaw;
+            } orient_ref;
+            struct orient_integral_t
+            {
+                float roll;
+                float pitch;
+                float yaw;
+            } orient_integral;
+            struct omega_t
+            {
+                float x;
+                float y;
+                float z;
+            } omega;
+            struct omega_ref_t
+            {
+                float x;
+                float y;
+                float z;
+            } omega_ref;
+            struct vel_t
+            {
+                float x;
+                float y;
+            } vel;
+            struct vel_kinematics_t
+            {
+                float x;
+                float y;
+            } vel_kinematics;
+            struct vel_ref_t
+            {
+                float x;
+                float y;
+            } vel_ref;
+            float torque[3];
+            float S[3];
+        } ControllerDebug_t;
 
         typedef struct
         {
@@ -534,14 +628,35 @@ namespace lspc
 
         typedef struct
         {
-            float time;
-            float vbat1;
-            float vbat2;
-            float current1;
-            float current2;
-            float pct1;
-            float pct2;
+            //Header  header
+            float voltage;          // Voltage in Volts (Mandatory)
+            float current;          // Negative when discharging (A)  (If unmeasured NaN)
+            float charge;           // Current charge in Ah  (If unmeasured NaN)
+            float capacity;         // Capacity in Ah (last full capacity)  (If unmeasured NaN)
+            float design_capacity;  // Capacity in Ah (design capacity)  (If unmeasured NaN)
+            float percentage;       // Charge percentage on 0 to 1 range  (If unmeasured NaN)
+            uint8_t   power_supply_status;     // The charging status as reported. Values defined above
+            uint8_t   power_supply_health;     // The battery health metric. Values defined above
+            uint8_t   power_supply_technology; // The battery chemistry. Values defined above
+            bool    present;        // True if the battery is present
+
+            float cell_voltage[10];   // An array of individual cell voltages for each cell in the pack
+            // If individual voltages unknown but number of cells known set each to NaN
+            uint8_t location;        // The location into which the battery is inserted. (slot number or plug)
+            uint32_t serial_number;   // The best approximation of the battery serial number
         } RawSensor_Battery_t;
+
+        typedef struct
+        {
+            float time;
+            float batteryAssamblyChargePercentage; // Charge percentage on 0 to 1 range  (If unmeasured NaN)
+            float batteryAssamblyTotalCharge; // Current charge in Ah  (If unmeasured NaN)
+            float batteryAssamblyTotalCapacity; // Capacity in Ah (last full capacity)  (If unmeasured NaN)
+            uint8_t nBatteries; // 0 if no batteries present
+            uint8_t power_supply_status;     // The charging status as reported.
+            uint8_t power_supply_health;     // The battery health metric.
+            bool batteryAssamblyGettingOld;
+        } powerManagment_info_t;
 
         typedef struct
         {
