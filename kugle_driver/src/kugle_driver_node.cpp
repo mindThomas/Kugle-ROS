@@ -75,6 +75,7 @@
 #include <kugle_msgs/ControllerInfo.h>
 #include <kugle_msgs/Encoders.h>
 #include <kugle_msgs/StateEstimate.h>
+#include <kugle_msgs/powerManagmentInfo.h>
 #include <kugle_msgs/Euler.h>
 #include <kugle_msgs/Vector2.h>
 #include <kugle_msgs/ControllerDebug.h>
@@ -457,11 +458,62 @@ void LSPC_Callback_RawSensor_IMU_MTI200(const std::vector<uint8_t>& payload)
 void LSPC_Callback_RawSensor_Battery(ros::Publisher& pubBattery, const std::vector<uint8_t>& payload)
 {
     //ROS_DEBUG_STREAM("Received Raw Sensor - Battery");
+    const lspc::MessageTypesToPC::RawSensor_Battery_t * msgRaw = reinterpret_cast<const lspc::MessageTypesToPC::RawSensor_Battery_t *>(payload.data());
+    if (sizeof(*msgRaw) != payload.size()) {
+        ROS_DEBUG("Error parsing BatteryInfo message");
+        return;
+    }
 
     sensor_msgs::BatteryState msg;
-    /* ToDo: Fill battery info into msg */
-    //pubBattery.publish(msg);
+    msg.header.stamp = ros::Time::now();
+    msg.power_supply_status = msgRaw->power_supply_status;
+    msg.power_supply_health = msgRaw->power_supply_health;
+    msg.power_supply_technology = msgRaw->power_supply_technology;
+    msg.current = msgRaw->current;
+
+    ///sprintf(msg.serial_number,"%x",msgRaw->serial_number) // converts to hexadecimal base.
+    msg.serial_number = std::to_string(msgRaw->serial_number);
+    msg.capacity = msgRaw->capacity;
+    msg.charge = msgRaw->charge;
+    msg.design_capacity = msgRaw->design_capacity;
+    msg.location = msgRaw->location;
+    msg.percentage = msgRaw->percentage;
+    msg.present = msgRaw->present;
+    msg.voltage = msgRaw->voltage;
+
+    //ros::Publisher pub_battery = n->advertise<sensor_msgs::BatteryState>("battery", 50);
+    //(*lspcObj)->registerCallback(lspc::MessageTypesToPC::RawSensor_Battery, boost::bind(&LSPC_Callback_RawSensor_Battery, pub_battery, _1));
+
+    pubBattery.publish(msg);
 }
+
+void LSPC_Callback_powerManagmentInfo(ros::Publisher& pubPowerManagmentInfo, const std::vector<uint8_t>& payload)
+{
+    //ROS_DEBUG_STREAM("Received powerManagment info");
+    const lspc::MessageTypesToPC::powerManagment_info_t * msgRaw = reinterpret_cast<const lspc::MessageTypesToPC::powerManagment_info_t *>(payload.data());
+    if (sizeof(*msgRaw) != payload.size()) {
+        ROS_DEBUG("Error parsing powerManagment_info message");
+        return;
+    }
+
+    kugle_msgs::powerManagmentInfo msg;
+    msg.receive_time = ros::Time::now();
+    msg.mcu_time = msgRaw->time;
+    msg.batteryAssamblyChargePercentage = msgRaw->batteryAssamblyChargePercentage;
+    msg.batteryAssamblyTotalCharge = msgRaw->batteryAssamblyTotalCharge;
+    msg.batteryAssamblyTotalCapacity = msgRaw->batteryAssamblyTotalCapacity;
+    msg.nBatteries = msgRaw->nBatteries;
+    msg.power_supply_status = msgRaw->power_supply_status;
+    msg.power_supply_health = msgRaw->power_supply_health;
+    msg.batteryAssamblyGettingOld = msgRaw->batteryAssamblyGettingOld;
+
+    pubPowerManagmentInfo.publish(msg);
+}
+
+
+
+
+
 
 void LSPC_Callback_RawSensor_Encoders(ros::Publisher& pubEncoders, const std::vector<uint8_t>& payload)
 {
@@ -1891,6 +1943,7 @@ void LSPC_ConnectionThread(boost::shared_ptr<ros::NodeHandle> n, std::string ser
     ros::Publisher pub_imu = n->advertise<sensor_msgs::Imu>("imu", 50);
     ros::Publisher pub_mag = n->advertise<sensor_msgs::MagneticField>("magnetometer", 50);
     ros::Publisher pub_battery = n->advertise<sensor_msgs::BatteryState>("battery", 50);
+    ros::Publisher pub_PowerManagmentInfo = n->advertise<kugle_msgs::powerManagmentInfo>("powerManagmentInfo", 50);
     ros::Publisher pub_encoders = n->advertise<kugle_msgs::Encoders>("encoders", 50);
     ros::Publisher pub_controller_info = n->advertise<kugle_msgs::ControllerInfo>("controller_info", 50);
     ros::Publisher pub_state_estimate = n->advertise<kugle_msgs::StateEstimate>("state_estimate", 50);
@@ -1968,6 +2021,7 @@ void LSPC_ConnectionThread(boost::shared_ptr<ros::NodeHandle> n, std::string ser
         (*lspcObj)->registerCallback(lspc::MessageTypesToPC::RawSensor_IMU_MPU9250, boost::bind(&LSPC_Callback_RawSensor_IMU_MPU9250, pub_imu, pub_mag, _1));
         (*lspcObj)->registerCallback(lspc::MessageTypesToPC::RawSensor_IMU_MTI200, &LSPC_Callback_RawSensor_IMU_MTI200);
         (*lspcObj)->registerCallback(lspc::MessageTypesToPC::RawSensor_Battery, boost::bind(&LSPC_Callback_RawSensor_Battery, pub_battery, _1));
+        (*lspcObj)->registerCallback(lspc::MessageTypesToPC::powerManagment_info, boost::bind(&LSPC_Callback_powerManagmentInfo, pub_PowerManagmentInfo, _1));
         (*lspcObj)->registerCallback(lspc::MessageTypesToPC::RawSensor_Encoders, boost::bind(&LSPC_Callback_RawSensor_Encoders, pub_encoders, _1));
         (*lspcObj)->registerCallback(lspc::MessageTypesToPC::CalibrateIMUAck, &LSPC_Callback_CalibrateIMUAck);
         (*lspcObj)->registerCallback(lspc::MessageTypesToPC::RestartControllerAck, &LSPC_Callback_RestartControllerAck);

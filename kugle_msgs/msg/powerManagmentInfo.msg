@@ -1,0 +1,9 @@
+time receive_time
+float32 mcu_time
+float32 batteryAssamblyChargePercentage
+float32 batteryAssamblyTotalCharge
+float32 batteryAssamblyTotalCapacity
+uint8 nBatteries
+uint8 power_supply_status
+uint8 power_supply_health
+bool batteryAssamblyGettingOld

@@ -16,6 +16,7 @@ add_message_files(
   Vector2.msg
   ControllerDebug.msg
   BalanceControllerReference.msg
+  powerManagmentInfo.msg
 )
 
 generate_messages(DEPENDENCIES geometry_msgs std_msgs actionlib_msgs)
