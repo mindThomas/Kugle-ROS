@@ -1567,6 +1567,7 @@ void reconfigureCallback(kugle_driver::ParametersConfig &config, uint32_t level,
     if (config.DisableMotorOutput != reconfigureConfig.DisableMotorOutput) reconfigureModifyParameter("debug", "DisableMotorOutput", config.DisableMotorOutput ? "true" : "false", lspcMutex, lspcObj);
 
     if (config.IndependentHeading != reconfigureConfig.IndependentHeading) reconfigureModifyParameter("behavioural", "IndependentHeading", config.IndependentHeading ? "true" : "false", lspcMutex, lspcObj);
+    if (config.StepTestEnabled != reconfigureConfig.StepTestEnabled) reconfigureModifyParameter("behavioural", "StepTestEnabled", config.StepTestEnabled ? "true" : "false", lspcMutex, lspcObj);
     if (config.SineTestEnabled != reconfigureConfig.SineTestEnabled) reconfigureModifyParameter("behavioural", "SineTestEnabled", config.SineTestEnabled ? "true" : "false", lspcMutex, lspcObj);
     if (config.PowerButtonMode != reconfigureConfig.PowerButtonMode) reconfigureModifyParameter("behavioural", "PowerButtonMode", std::to_string(config.PowerButtonMode), lspcMutex, lspcObj);
 
@@ -1664,6 +1665,7 @@ void LoadParamsIntoReconfigure(std::shared_ptr<std::timed_mutex> lspcMutex, std:
     reconfigureConfig.DisableMotorOutput = Parse2Bool(reconfigureRetrieveParameter("debug", "DisableMotorOutput", lspcMutex, lspcObj));
 
     reconfigureConfig.IndependentHeading = Parse2Bool(reconfigureRetrieveParameter("behavioural", "IndependentHeading", lspcMutex, lspcObj));
+    reconfigureConfig.StepTestEnabled = Parse2Bool(reconfigureRetrieveParameter("behavioural", "StepTestEnabled", lspcMutex, lspcObj));
     reconfigureConfig.SineTestEnabled = Parse2Bool(reconfigureRetrieveParameter("behavioural", "SineTestEnabled", lspcMutex, lspcObj));
     reconfigureConfig.PowerButtonMode = int(ParsePowerButtonMode2(reconfigureRetrieveParameter("behavioural", "PowerButtonMode", lspcMutex, lspcObj)));
 
