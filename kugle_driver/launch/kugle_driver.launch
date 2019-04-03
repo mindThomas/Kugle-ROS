@@ -2,6 +2,7 @@
 <launch>
 
 	<arg name="serial_port" default="/dev/kugle" />
+	<arg name="open_reconfigure" default="true" />
 
   	<env name="ROSCONSOLE_CONFIG_FILE" value="$(find kugle_driver)/config/rosconsole.conf"/>
 
@@ -13,6 +14,8 @@
 		<param name="serial_port" type="string" value="$(arg serial_port)" />
 	</node>
 
-	<node name="reconfigure_gui" pkg="rqt_reconfigure" type="rqt_reconfigure" required="false" args="kugle_driver" />
+	<group if="$(arg open_reconfigure)">
+		<node name="reconfigure_gui" pkg="rqt_reconfigure" type="rqt_reconfigure" required="false" args="kugle_driver" />
+	</group>
 
 </launch>

@@ -5,6 +5,7 @@
 
 	<include file="$(find kugle_driver)/launch/kugle_driver.launch">
 		<arg name="serial_port" value="/dev/kugle" />
+		<arg name="open_reconfigure" value="false" /> <!-- Do not open reconfigure GUI on onboard computer -->
 	</include>
 
 	<!-- Launch SICK LiDAR nodes -->
