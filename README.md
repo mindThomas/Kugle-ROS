@@ -67,6 +67,19 @@ The driver which communicates with the MCU over USB can be launched either on a 
 roslaunch kugle_driver kugle_driver.launch
 ```
 
+# Usage
+## Connecting to onboard computer ROS
+The onboard computer automatically launches the minimal bringup launch file at boot and creates a WiFi hotspot named 'kugle'. Connecting to this hotspot gives access to the ROS Master created by the robot. To link a user computer to the ROS Master source the `ConnectROS.sh` script:
+```bash
+source ConnectROS.sh
+```
+
+## Reconfigure GUI (change parameters)
+To open the reconfigure GUI on a local computer connected to the ROS Master run the command
+```bash
+rosrun rqt_reconfigure rqt_reconfigure kugle_driver
+```
+
 ## RVIZ display
 An RVIZ visualization of the robot can be launched by running
 ```bash
@@ -78,3 +91,31 @@ When the `kugle_driver` is running the MCU load is published on the topic `mcu_l
 ```bash
 rostopic echo /mcu_load -p
 ```
+
+## Soft restart
+The controller and estimators running inside the embedded firmware on the microprocessor can be restarted by running:
+```bash
+rosservice call /kugle/restart_controller
+```
+
+## Reboot MCU 
+The microprocessor can be rebooted by calling:
+```bash
+rosservice call /kugle/reboot
+```
+
+## Calibrate IMU
+Calibration of the IMU requires the robot to be positioned/aligned such that its' center of mass is located above the center of the ball. Hold the robot and find the balancing point and the run the calibration by calling:
+```bash
+rosservice call /kugle/calibrate_imu
+```
+The calibration computes an alignment rotation matrix to align the z-axis with the downward-pointing gravity direction. Since the calibration also involves calibrating the gyroscope bias, the robot should be held still during calibration.
+
+When finished the calibration is automatically stored inside non-volatile memory of the microprocessor.
+
+## Over-the-air MCU update
+The MCU can be programmed either using the onboard USB programmer/debugger or using the built-in USB bootloader. If just the Client USB connection is connected to the STM32H7 board, only the built-in USB bootloader can be used. To enter the bootloader the system should be in OFF state (motors not running) whereafter the bootloader is entered by calling:
+```bash
+rosservice call /kugle/enter_bootloader
+```
+The firmware can now be updated using the functions described in https://github.com/mindThomas/Kugle-Embedded#dfu-bootloader-over-usb
