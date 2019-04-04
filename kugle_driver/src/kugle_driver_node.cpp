@@ -769,6 +769,10 @@ bool ParseParamTypeAndID(const std::string in_type, const std::string in_param, 
             out_param = lspc::ParameterLookup::SineTestEnabled;
             out_valueType = lspc::ParameterLookup::_bool;
         }
+        else if (!in_param.compare("CircleTestEnabled")) {
+            out_param = lspc::ParameterLookup::CircleTestEnabled;
+            out_valueType = lspc::ParameterLookup::_bool;
+        }
         else if (!in_param.compare("PowerButtonMode")) {
             out_param = lspc::ParameterLookup::PowerButtonMode;
             out_valueType = lspc::ParameterLookup::_uint8;
@@ -790,6 +794,10 @@ bool ParseParamTypeAndID(const std::string in_type, const std::string in_param, 
         }
         else if (!in_param.compare("EnableTorqueLPF")) {
             out_param = lspc::ParameterLookup::EnableTorqueLPF;
+            out_valueType = lspc::ParameterLookup::_bool;
+        }
+        else if (!in_param.compare("MotorFailureDetection")) {
+            out_param = lspc::ParameterLookup::MotorFailureDetection;
             out_valueType = lspc::ParameterLookup::_bool;
         }
         else if (!in_param.compare("ManifoldType")) {
@@ -1569,10 +1577,12 @@ void reconfigureCallback(kugle_driver::ParametersConfig &config, uint32_t level,
     if (config.IndependentHeading != reconfigureConfig.IndependentHeading) reconfigureModifyParameter("behavioural", "IndependentHeading", config.IndependentHeading ? "true" : "false", lspcMutex, lspcObj);
     if (config.StepTestEnabled != reconfigureConfig.StepTestEnabled) reconfigureModifyParameter("behavioural", "StepTestEnabled", config.StepTestEnabled ? "true" : "false", lspcMutex, lspcObj);
     if (config.SineTestEnabled != reconfigureConfig.SineTestEnabled) reconfigureModifyParameter("behavioural", "SineTestEnabled", config.SineTestEnabled ? "true" : "false", lspcMutex, lspcObj);
+    if (config.CircleTestEnabled != reconfigureConfig.CircleTestEnabled) reconfigureModifyParameter("behavioural", "CircleTestEnabled", config.CircleTestEnabled ? "true" : "false", lspcMutex, lspcObj);
     if (config.PowerButtonMode != reconfigureConfig.PowerButtonMode) reconfigureModifyParameter("behavioural", "PowerButtonMode", std::to_string(config.PowerButtonMode), lspcMutex, lspcObj);
 
     if (config.type != reconfigureConfig.type) reconfigureModifyParameter("controller", "type", std::to_string(config.type), lspcMutex, lspcObj);
     if (config.mode != reconfigureConfig.mode) reconfigureModifyParameter("controller", "mode", std::to_string(config.mode), lspcMutex, lspcObj);
+    if (config.MotorFailureDetection != reconfigureConfig.MotorFailureDetection) reconfigureModifyParameter("controller", "MotorFailureDetection", config.MotorFailureDetection ? "true" : "false", lspcMutex, lspcObj);
     if (config.DisableQdot != reconfigureConfig.DisableQdot) reconfigureModifyParameter("controller", "DisableQdot", config.DisableQdot ? "true" : "false", lspcMutex, lspcObj);
     if (config.DisableQdotInEquivalentControl != reconfigureConfig.DisableQdotInEquivalentControl) reconfigureModifyParameter("controller", "DisableQdotInEquivalentControl", config.DisableQdotInEquivalentControl ? "true" : "false", lspcMutex, lspcObj);
     if (config.DisableOmegaXYInEquivalentControl != reconfigureConfig.DisableOmegaXYInEquivalentControl) reconfigureModifyParameter("controller", "DisableOmegaXYInEquivalentControl", config.DisableOmegaXYInEquivalentControl ? "true" : "false", lspcMutex, lspcObj);
@@ -1667,10 +1677,12 @@ void LoadParamsIntoReconfigure(std::shared_ptr<std::timed_mutex> lspcMutex, std:
     reconfigureConfig.IndependentHeading = Parse2Bool(reconfigureRetrieveParameter("behavioural", "IndependentHeading", lspcMutex, lspcObj));
     reconfigureConfig.StepTestEnabled = Parse2Bool(reconfigureRetrieveParameter("behavioural", "StepTestEnabled", lspcMutex, lspcObj));
     reconfigureConfig.SineTestEnabled = Parse2Bool(reconfigureRetrieveParameter("behavioural", "SineTestEnabled", lspcMutex, lspcObj));
+    reconfigureConfig.CircleTestEnabled = Parse2Bool(reconfigureRetrieveParameter("behavioural", "CircleTestEnabled", lspcMutex, lspcObj));
     reconfigureConfig.PowerButtonMode = int(ParsePowerButtonMode2(reconfigureRetrieveParameter("behavioural", "PowerButtonMode", lspcMutex, lspcObj)));
 
     reconfigureConfig.mode = int(ParseControllerMode2(reconfigureRetrieveParameter("controller", "mode", lspcMutex, lspcObj)));
     reconfigureConfig.type = int(ParseControllerType2(reconfigureRetrieveParameter("controller", "type", lspcMutex, lspcObj)));
+    reconfigureConfig.MotorFailureDetection = Parse2Bool(reconfigureRetrieveParameter("controller", "MotorFailureDetection", lspcMutex, lspcObj));
     reconfigureConfig.DisableQdot = Parse2Bool(reconfigureRetrieveParameter("controller", "DisableQdot", lspcMutex, lspcObj));
     reconfigureConfig.DisableQdotInEquivalentControl = Parse2Bool(reconfigureRetrieveParameter("controller", "DisableQdotInEquivalentControl", lspcMutex, lspcObj));
     reconfigureConfig.DisableOmegaXYInEquivalentControl = Parse2Bool(reconfigureRetrieveParameter("controller", "DisableOmegaXYInEquivalentControl", lspcMutex, lspcObj));
