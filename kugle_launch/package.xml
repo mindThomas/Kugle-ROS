@@ -49,6 +49,13 @@
   <!-- Use doc_depend for packages you need only for building documentation: -->
   <!--   <doc_depend>doxygen</doc_depend> -->
   <buildtool_depend>catkin</buildtool_depend>
+  <exec_depend>joy</exec_depend>
+  <exec_depend>kugle_description</exec_depend>
+  <exec_depend>kugle_gazebo</exec_depend>
+  <exec_depend>kugle_misc</exec_depend>
+  <exec_depend>kugle_driver</exec_depend>
+  <exec_depend>kugle_navigation</exec_depend>
+  <exec_depend>kugle_mapping</exec_depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>

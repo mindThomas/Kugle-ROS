@@ -51,7 +51,7 @@
   <buildtool_depend>catkin</buildtool_depend>
   <exec_depend>kugle_gazebo</exec_depend>
   <exec_depend>kugle_misc</exec_depend>
-  <depend>joy</depend>
+  <exec_depend>kugle_driver</exec_depend>
   <depend>sick_tim</depend>
   <depend>depthimage_to_laserscan</depend>
 

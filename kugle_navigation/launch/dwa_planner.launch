@@ -5,12 +5,6 @@
 	<arg name="base_frame_id"   default="heading"/>
 	<arg name="global_frame_id" default="map"/>
   	<arg name="odom_topic" default="odom" />
-	<arg name="left_laser_topic" default="/laser/left/scan" />
-	<arg name="right_laser_topic" default="/laser/right/scan" />
-	<arg name="initial_pose_x" default="0.0"/>
-	<arg name="initial_pose_y" default="0.0"/>
-	<arg name="initial_pose_a" default="0.0"/>
-
 	<arg name="laser_topic" default="/laser/combined/scan"/>
 
 	<node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen">

@@ -1,6 +1,10 @@
 <?xml version="1.0"?>
 <launch>
 
-	<!--  -->
+	<!-- Launch gmapping node using the two LiDARs -->
+	<include file="$(find kugle_mapping)/launch/gmapping.launch">
+	</include>
+
+	<!-- When finished mapping, save the map by calling: "rosrun map_server map_saver -f /tmp/my_map" -->
 
 </launch>

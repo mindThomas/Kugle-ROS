@@ -1,15 +1,16 @@
 # Kugle-ROS
-ROS workspace for the Kugle robot including packages for high-level navigation tasks including localization/SLAM with LiDAR, path planning and obstacle avoidance
+ROS workspace for the Kugle robot including the ROS driver interfacing with the embedded hardware and corresponding launch files for other high-level packages such as LiDAR localization using `amcl`, mapping using `gmapping` and navigation using a custom local planner based on a shape-accelerated model predictive controller.
 
 The repository is structured according to general ROS practices, see e.g. https://github.com/leggedrobotics/ros_best_practices/wiki
 
-# Install tool
+# Clone and Build
+## Install necessary tools
 ```bash
 sudo apt-get install python-catkin-tools
 sudo apt-get install python-rosdep
 ```
 
-# Cloning
+## Cloning
 To set up the simulation environment you need to clone the necessary repositories into an existing or new catkin workspace.
 Follow the steps below to set up a new catkin workspace and clone:
 ```bash
@@ -23,7 +24,7 @@ cd ..
 rosdep install --from-paths src --ignore-src -r -y
 ```
 
-# Building
+## Building
 Build the project with catkin build
 ```bash
 cd ~/kugle_simulation_ws
@@ -92,6 +93,57 @@ When the `kugle_driver` is running the MCU load is published on the topic `mcu_l
 rostopic echo /mcu_load -p
 ```
 
+## Localization node
+The two LiDARs can be used to determine the position and orientation of the Kugle robot. The simplest and yet fairly effective way of localizing with LiDAR is by using `amcl`. An `amcl` localization node can be started by running
+```bash
+roslaunch kugle_launch localization.launch
+```
+
+## Mapping
+Before Kugle is able to localize it needs to construct a map of the environment. A mapping instance can be carried out with `gmapping` which can be started in a pre-configured mode for the Kugle robot by launching
+```bash
+roslaunch kugle_launch mapping.launch
+```
+
+## Playstation joystick control
+In Velocity control mode the Kugle robot can be controlled remotely with a Playstation joystic. The wireless joystick connection is achieved using `ds4drv`
+```bash
+sudo pip install ds4drv
+```
+
+First ensure that Velocity control mode is enabled through the reconfigure GUI. Next connect to the Playstation joystick by opening a new terminal and write:
+```bash
+sudo ds4drv
+```
+
+Finally the joystick node can be launched to map the joystick inputs to corresponding velocity references.
+```bash
+roslaunch kugle_launch joystick.launch
+```
+
+Note that the above steps can either be performed on the onboard computer or on an external computer configured to communicate with the Kugle ROS Master, see above step about connecting to the onboard computer.
+
+
+# Simulation
+The ROS driver can be used with the Gazebo simulation of the Kugle found in https://github.com/mindThomas/Kugle-Gazebo
+
+A simulation environment with ROS topics matching the ROS driver can be launched with
+```bash
+roslaunch kugle_launch simulation.launch
+```
+
+In the default RVIZ view opened after starting the simulation the Kugle robot will show up "white" because the `Fixed Frame` is set to `map` and the localization node has not be started. After running the `localization.launch` (see above) the Kugle robot should show up properly. Another option is to set the `Fixed Frame` to `world`.
+
+## MPC simulation
+A model predictive controller, derived using ACADO, has been implemented as a local planner for the Kugle robot. To run the MPC on the simulated Kugle robot the `localization` node has to be running. The MPC node is started by running
+```bash
+roslaunch kugle_launch mpc.launch
+```
+
+Navigation goals can now be set using the regular method of setting navigation goals, e.g. through RVIZ.
+
+
+# Development-specific notes
 ## Soft restart
 The controller and estimators running inside the embedded firmware on the microprocessor can be restarted by running:
 ```bash

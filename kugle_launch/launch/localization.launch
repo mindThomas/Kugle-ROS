@@ -1,6 +1,10 @@
 <?xml version="1.0"?>
 <launch>
 
-	<!--  -->
+	<!-- Launch AMCL localization node using the two LiDARs -->
+	<include file="$(find kugle_navigation)/launch/amcl.launch">
+		<!-- By default the map of the simulation environment is loaded and used -->
+		<!-- <arg name="map_file" default="/tmp/my_map.yaml"/> -->
+	</include>
 
 </launch>

@@ -164,8 +164,6 @@ add_definitions(${EIGEN3_DEFINITIONS})
 #   ${catkin_LIBRARIES}
 # )
 
-#add_library(global_planner src/astar.cpp src/dijkstra.cpp src/gradient_path.cpp src/grid_path.cpp)
-
 add_library(kugle_mpc_plugin src/kugle_mpc_plugin.cpp)
 add_dependencies(kugle_mpc_plugin ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} mpc) #  global_planner
 target_link_libraries(kugle_mpc_plugin ${catkin_LIBRARIES} mpc) # global_planner

@@ -22,8 +22,8 @@
   </node>
 
   <!-- Map of the lab -->
-  <!--<arg name="map_file" default="$(find kugle_navigation)/maps/gazebo_control_lab.yaml"/>-->
-  <arg name="map_file" default="/tmp/my_map.yaml"/>
+  <arg name="map_file" default="$(find kugle_navigation)/maps/gazebo_control_lab.yaml"/>-->
+  <!--<arg name="map_file" default="/tmp/my_map.yaml"/>-->
   <node name="map_server" pkg="map_server" type="map_server" args="$(arg map_file)" output="screen" />
 
   <!-- AMCL -->

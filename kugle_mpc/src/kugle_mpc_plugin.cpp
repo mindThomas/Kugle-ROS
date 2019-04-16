@@ -277,6 +277,24 @@ void KugleMPC::MPC_Thread()
 
         global_plan_mutex_.unlock();
 
+
+        /* Compute obstacles based on local costmap */
+        costmap_2d::Costmap2D * costmap = costmap_->getCostmap();
+        unsigned int cx = costmap->getSizeInCellsX(), cy = costmap->getSizeInCellsY();
+        /*global_planner::PotentialCalculator * p_calc_ = new global_planner::PotentialCalculator(cx, cy);
+        global_planner::Expander * planner_ = new global_planner::AStarExpansion(p_calc_, cx, cy);
+        global_planner::Traceback * path_maker_ = new global_planner::GridPath(p_calc_);*/
+
+        cv::Mat imgCostmap = cv::Mat(cy, cx, CV_8UC3, cv::Scalar(255, 255, 255));
+        for (int x = 0; x < cx; x++) {
+            for (int y = 0; y < cy; y++) {
+                unsigned char cost = costmap->getCost(x, y);
+                imgCostmap.at<cv::Vec3b>(cv::Point(x,y)) = cv::Vec3b(cost,cost,cost);
+            }
+        }
+        cv::imshow("Costmap", imgCostmap);
+        //global_planner::Traceback * path_maker_ = new global_planner::GradientPath(p_calc_);
+
         /*if (distanceToGoal <= 1.0) {  // we have less than 1.0 meters to goal => just set the goal reference
             mpc_.setXYreferencePosition(goal.point[0], goal.point[1]);
         }*/
