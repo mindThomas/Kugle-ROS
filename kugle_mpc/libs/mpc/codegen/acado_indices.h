@@ -42,41 +42,41 @@ typedef struct x_t
 
 typedef struct u_t
 {
-    real_t domega_ref_x;
-    real_t domega_ref_y;
-    real_t dds;
+	real_t domega_ref_x;
+	real_t domega_ref_y;
+	real_t dds;
 	real_t velocity_slack;
 	real_t proximity_slack;
 } u_t __attribute__((packed));
 
 typedef struct od_t
 {
-    real_t desiredVelocity;
+	real_t desiredVelocity;
 	real_t maxVelocity;
-    real_t maxAngle;
-    real_t maxOmegaRef;
-    real_t trajectoryLength;
-    real_t trajectoryStart;
+	real_t maxAngle;
+	real_t maxOmegaRef;
+	real_t trajectoryLength;
+	real_t trajectoryStart;
 	real_t cx9;
 	real_t cx8;
-    real_t cx7;
-    real_t cx6;
-    real_t cx5;
-    real_t cx4;
-    real_t cx3;
-    real_t cx2;
-    real_t cx1;
-    real_t cx0;
+	real_t cx7;
+	real_t cx6;
+	real_t cx5;
+	real_t cx4;
+	real_t cx3;
+	real_t cx2;
+	real_t cx1;
+	real_t cx0;
 	real_t cy9;
 	real_t cy8;
-    real_t cy7;
-    real_t cy6;
-    real_t cy5;
-    real_t cy4;
-    real_t cy3;
-    real_t cy2;
-    real_t cy1;
-    real_t cy0;
+	real_t cy7;
+	real_t cy6;
+	real_t cy5;
+	real_t cy4;
+	real_t cy3;
+	real_t cy2;
+	real_t cy1;
+	real_t cy0;
 	real_t obs1_x;
 	real_t obs1_y;
 	real_t obs1_r;
@@ -96,15 +96,15 @@ typedef struct od_t
 
 typedef struct y_t
 {
-    real_t x_err;
-    real_t y_err;
-    real_t q2;
+	real_t x_err;
+	real_t y_err;
+	real_t q2;
 	real_t q3;
-    real_t omega_ref_x;
-    real_t omega_ref_y;
-    real_t velocity_matching;
-    real_t velocity_error;
-    real_t domega_ref_x;  // this is the output, hence punishment of control output
+	real_t omega_ref_x;
+	real_t omega_ref_y;
+	real_t velocity_matching;
+	real_t velocity_error;
+	real_t domega_ref_x;  // this is the output, hence punishment of control output
 	real_t domega_ref_y;  // this is the output, hence punishment of control output
 	real_t velocity_slack;
 	real_t proximity_slack;
@@ -128,12 +128,12 @@ typedef struct ACADO_t
 	int dummy;
 	x_t x[ACADO_N+1];
 	u_t u[ACADO_N];
-    od_t od[ACADO_N+1];
-    y_t y[ACADO_N];
-    yN_t yN;
-    real_t W[ ACADO_NY*ACADO_NY ];
-    real_t WN[ ACADO_NYN*ACADO_NYN ];
-    x_t x0;
+	od_t od[ACADO_N+1];
+	y_t y[ACADO_N];
+	yN_t yN;
+	real_t W[ ACADO_NY*ACADO_NY ];
+	real_t WN[ ACADO_NYN*ACADO_NYN ];
+	x_t x0;
 } ACADO_t __attribute__((packed));
 
 //#pragma pack(pop)

@@ -33,14 +33,14 @@ namespace kugle_misc {
 // Fast inverse square-root
 // See: http://en.wikipedia.org/wiki/Fast_inverse_square_root
 double invSqrt(double x) {
-	double halfx = 0.5f * x;
-	double y = x;
-	long i = *(long*)&y;
-	i = 0x5f3759df - (i>>1);
-	y = *(double*)&i;
-	y = y * (1.5f - (halfx * y * y));
-	y = y * (1.5f - (halfx * y * y));
-	return y;
+    double halfx = 0.5f * x;
+    double y = x;
+    long i = *(long*)&y;
+    i = 0x5f3759df - (i>>1);
+    y = *(double*)&i;
+    y = y * (1.5f - (halfx * y * y));
+    y = y * (1.5f - (halfx * y * y));
+    return y;
 }
 
 /* result = q o p = Phi(q)*p */
@@ -60,7 +60,7 @@ void Quaternion_Phi(const double q[4], const double p[4], double result[4])
 /* result = V * q o p = V*Phi(q)*p */
 void Quaternion_devecPhi(const double q[4], const double p[4], double result[3])
 {
-		// V (devec) removes the first row of the result
+        // V (devec) removes the first row of the result
     /*Phi = @(q)[q(0) -q(1) -q(2) -q(3);     % for q o p = Phi(q) * p
                  q(1) q(0)  -q(3) q(2);
                  q(2) q(3)  q(0)  -q(1);
@@ -88,7 +88,7 @@ void Quaternion_PhiT(const double q[4], const double p[4], double result[4])
 /* result = V * q* o p = V*Phi(q)^T*p */
 void Quaternion_devecPhiT(const double q[4], const double p[4], double result[3])
 {
-		// V (devec) removes the first row of the result
+        // V (devec) removes the first row of the result
     /*Phi^T = @(q)[q(0) q(1) q(2) q(3);     % for q o p = Phi(q) * p
                  -q(1) q(0)  q(3) -q(2);
                  -q(2) -q(3)  q(0)  q(1);
@@ -102,11 +102,11 @@ void Quaternion_devecPhiT(const double q[4], const double p[4], double result[3]
 /* mat = Phi(q)^T */
 void Quaternion_mat_PhiT(const double q[4], double mat[4*4])
 {
-	/*Phi^T = @(q)[q(0) q(1) q(2) q(3);     % for q o p = Phi(q) * p
-							 -q(1) q(0)  q(3) -q(2);
-							 -q(2) -q(3)  q(0)  q(1);
-							 -q(3) q(2) -q(1)  q(0)];
-	*/
+    /*Phi^T = @(q)[q(0) q(1) q(2) q(3);     % for q o p = Phi(q) * p
+                             -q(1) q(0)  q(3) -q(2);
+                             -q(2) -q(3)  q(0)  q(1);
+                             -q(3) q(2) -q(1)  q(0)];
+    */
     mat[0]  = q[0];   mat[1]  = q[1];   mat[2]  = q[2];   mat[3]  = q[3];
     mat[4]  = -q[1];  mat[5]  = q[0];   mat[6]  = q[3];  mat[7]  = -q[2];
     mat[8]  = -q[2];  mat[9]  = -q[3];   mat[10] = q[0];   mat[11] = q[1];
@@ -212,20 +212,20 @@ void Quaternion_Print(const double q[4])
 
 void Quaternion_Normalize(const double q[4], double q_out[4])
 {
-	double normFactor = invSqrt(q[0]*q[0] + q[1]*q[1] + q[2]*q[2] + q[3]*q[3]);
-	q_out[0] = normFactor * q[0];
-	q_out[1] = normFactor * q[1];
-	q_out[2] = normFactor * q[2];
-	q_out[3] = normFactor * q[3];
+    double normFactor = invSqrt(q[0]*q[0] + q[1]*q[1] + q[2]*q[2] + q[3]*q[3]);
+    q_out[0] = normFactor * q[0];
+    q_out[1] = normFactor * q[1];
+    q_out[2] = normFactor * q[2];
+    q_out[3] = normFactor * q[3];
 }
 
 void Quaternion_Normalize(double q[4])
 {
-	double normFactor = invSqrt(q[0]*q[0] + q[1]*q[1] + q[2]*q[2] + q[3]*q[3]);
-	q[0] *= normFactor;
-	q[1] *= normFactor;
-	q[2] *= normFactor;
-	q[3] *= normFactor;
+    double normFactor = invSqrt(q[0]*q[0] + q[1]*q[1] + q[2]*q[2] + q[3]*q[3]);
+    q[0] *= normFactor;
+    q[1] *= normFactor;
+    q[2] *= normFactor;
+    q[3] *= normFactor;
 }
 
 void Quaternion_eul2quat_zyx(const double yaw, const double pitch, const double roll, double q[4])
@@ -245,47 +245,47 @@ void Quaternion_eul2quat_zyx(const double yaw, const double pitch, const double 
 
 void Quaternion_quat2eul_zyx(const double q[4], double yaw_pitch_roll[3])
 {
-	// Normalize quaternion
-	double q_normalized[4];
-	Quaternion_Normalize(q, q_normalized);
+    // Normalize quaternion
+    double q_normalized[4];
+    Quaternion_Normalize(q, q_normalized);
 
-	double qw = q_normalized[0];
-	double qx = q_normalized[1];
-	double qy = q_normalized[2];
-	double qz = q_normalized[3];
+    double qw = q_normalized[0];
+    double qx = q_normalized[1];
+    double qy = q_normalized[2];
+    double qz = q_normalized[3];
 
   double aSinInput = -2*(qx*qz-qw*qy);
-	aSinInput = fmax(fmin(aSinInput, 1.f), -1.f);
+    aSinInput = fmax(fmin(aSinInput, 1.f), -1.f);
 
   yaw_pitch_roll[0] = atan2( 2*(qx*qy+qw*qz), qw*qw + qx*qx - qy*qy - qz*qz ); // yaw
   yaw_pitch_roll[1] = asin( aSinInput ); // pitch
-	yaw_pitch_roll[2] = atan2( 2*(qy*qz+qw*qx), qw*qw - qx*qx - qy*qy + qz*qz ); // roll
+    yaw_pitch_roll[2] = atan2( 2*(qy*qz+qw*qx), qw*qw - qx*qx - qy*qy + qz*qz ); // roll
 }
 
 void Quaternion_AngleClamp(const double q[4], const double angleMax, double q_clamped[4])
 {
-	// Bound/clamp quaternion rotation amount by angle
-	double cosAngle, sinAngle, currentAngle, clampedAngle; // tan = sin/cos
-	cosAngle = q[0];
-	sinAngle = sqrtf(q[1]*q[1] + q[2]*q[2] + q[3]*q[3]); // norm of rotation axis
+    // Bound/clamp quaternion rotation amount by angle
+    double cosAngle, sinAngle, currentAngle, clampedAngle; // tan = sin/cos
+    cosAngle = q[0];
+    sinAngle = sqrtf(q[1]*q[1] + q[2]*q[2] + q[3]*q[3]); // norm of rotation axis
 
-	if (sinAngle == 0) {
-		// Return unit quaternion if there is no tilt, hence norm is zero
-		q_clamped[0] = 1;
-		q_clamped[1] = 0;
-		q_clamped[2] = 0;
-		q_clamped[3] = 0;
-		return;
-	}
+    if (sinAngle == 0) {
+        // Return unit quaternion if there is no tilt, hence norm is zero
+        q_clamped[0] = 1;
+        q_clamped[1] = 0;
+        q_clamped[2] = 0;
+        q_clamped[3] = 0;
+        return;
+    }
 
-	currentAngle = atan2(sinAngle, cosAngle) * 2;
-	clampedAngle = fmin(fmax(currentAngle, -angleMax), angleMax);
+    currentAngle = atan2(sinAngle, cosAngle) * 2;
+    clampedAngle = fmin(fmax(currentAngle, -angleMax), angleMax);
 
-	// Form clamped quaternion
-	q_clamped[0] = cosf(clampedAngle / 2);
-	q_clamped[1] = (q[1] / sinAngle) * sinf(clampedAngle / 2);
-	q_clamped[2] = (q[2] / sinAngle) * sinf(clampedAngle / 2);
-	q_clamped[3] = (q[3] / sinAngle) * sinf(clampedAngle / 2);
+    // Form clamped quaternion
+    q_clamped[0] = cosf(clampedAngle / 2);
+    q_clamped[1] = (q[1] / sinAngle) * sinf(clampedAngle / 2);
+    q_clamped[2] = (q[2] / sinAngle) * sinf(clampedAngle / 2);
+    q_clamped[3] = (q[3] / sinAngle) * sinf(clampedAngle / 2);
 }
 
 void Quaternion_Integration_Body(const double q[4], const double omega_body[3], const double dt, double q_out[4])
@@ -294,11 +294,11 @@ void Quaternion_Integration_Body(const double q[4], const double omega_body[3], 
      * q_out = q o exp(1/2*dt*q_omeg)
      * q_omeg = [0,omeg_x,omeg_y,omeg_z]
      */
-	double omega_norm = sqrtf(omega_body[0]*omega_body[0] + omega_body[1]*omega_body[1] + omega_body[2]*omega_body[2]);
-	double q_exp[4];
+    double omega_norm = sqrtf(omega_body[0]*omega_body[0] + omega_body[1]*omega_body[1] + omega_body[2]*omega_body[2]);
+    double q_exp[4];
 
     if (omega_norm > 0) {
-    	double sinOmeg = sinf(0.5f * dt * omega_norm);
+        double sinOmeg = sinf(0.5f * dt * omega_norm);
         q_exp[0] = cosf(0.5f * dt * omega_norm); // scalar part
         q_exp[1] = sinOmeg * omega_body[0] / omega_norm;
         q_exp[2] = sinOmeg * omega_body[1] / omega_norm;
@@ -321,11 +321,11 @@ void Quaternion_Integration_Inertial(const double q[4], const double omega_inert
      * q_out = exp(1/2*dt*q_omeg) o q
      * q_omeg = [0,omeg_x,omeg_y,omeg_z]
      */
-	double omega_norm = sqrtf(omega_inertial[0]*omega_inertial[0] + omega_inertial[1]*omega_inertial[1] + omega_inertial[2]*omega_inertial[2]);
-	double q_exp[4];
+    double omega_norm = sqrtf(omega_inertial[0]*omega_inertial[0] + omega_inertial[1]*omega_inertial[1] + omega_inertial[2]*omega_inertial[2]);
+    double q_exp[4];
 
     if (omega_norm > 0) {
-    	double sinOmeg = sinf(0.5f * dt * omega_norm);
+        double sinOmeg = sinf(0.5f * dt * omega_norm);
         q_exp[0] = cosf(0.5f * dt * omega_norm); // scalar part
         q_exp[1] = sinOmeg * omega_inertial[0] / omega_norm;
         q_exp[2] = sinOmeg * omega_inertial[1] / omega_norm;

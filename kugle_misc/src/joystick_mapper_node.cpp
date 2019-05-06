@@ -143,8 +143,8 @@ void joystickCallback(const sensor_msgs::Joy::ConstPtr& msg)
         Square_press_time.init();
     }
 
-	/*
-	    this->buttonSq = joy->buttons[0];
+    /*
+        this->buttonSq = joy->buttons[0];
         this->buttonX = joy->buttons[1];
         this->buttonO = joy->buttons[2];
         this->buttonTr = joy->buttons[3];
@@ -243,17 +243,17 @@ void PublishQuaternion(double loop_time, double time_out)
 }
 
 int main(int argc, char **argv) {
-	std::string nodeName = "joystick_mapper";
-	ros::init(argc, argv, nodeName.c_str());
-	ros::NodeHandle n; // default/current namespace node handle
-	ros::NodeHandle nParam("~"); // private node handle
+    std::string nodeName = "joystick_mapper";
+    ros::init(argc, argv, nodeName.c_str());
+    ros::NodeHandle n; // default/current namespace node handle
+    ros::NodeHandle nParam("~"); // private node handle
 
-	// Publish to reference topic
+    // Publish to reference topic
     velocityReferencePub = n.advertise<geometry_msgs::Twist>("cmd_vel", 1000);
     balanceControllerReferencePub = n.advertise<kugle_msgs::BalanceControllerReference>("cmd_combined", 1000);
 
-	// Subscribe to joystick topic
-	joystickSub = n.subscribe("joy", 1000, &joystickCallback);
+    // Subscribe to joystick topic
+    joystickSub = n.subscribe("joy", 1000, &joystickCallback);
 
     nParam.param("angle_mode", AngleControlMode, false);
     if (AngleControlMode)
@@ -261,7 +261,7 @@ int main(int argc, char **argv) {
     else
         std::cout << "Velocity control mode selected" << std::endl;
 
-	// Get maximum velocity
+    // Get maximum velocity
     nParam.param("maximum_linear_velocity", maximum_linear_velocity, double(0.5));
     nParam.param("rate_limit_linear_velocity", rate_limit_linear_velocity, double(0.5));
     nParam.param("maximum_angular_velocity", maximum_angular_velocity, double(0.5));
@@ -285,15 +285,15 @@ int main(int argc, char **argv) {
     RPYReference_prev[0] = 0;
     RPYReference_prev[1] = 0;
 
-	//ros::spin();
-	ros::Rate loop_rate(publish_rate); // publish at specified publish rate
-	while (ros::ok())
-	{
-		ros::spinOnce(); // walks the callback queue and calls registered callbacks for any outstanding events (incoming msgs, svc reqs, timers)
+    //ros::spin();
+    ros::Rate loop_rate(publish_rate); // publish at specified publish rate
+    while (ros::ok())
+    {
+        ros::spinOnce(); // walks the callback queue and calls registered callbacks for any outstanding events (incoming msgs, svc reqs, timers)
 
         PublishVelocity(1.0/publish_rate, 0.5); // timeout after 500 ms
         PublishQuaternion(1.0/publish_rate, 0.5); // timeout after 500 ms
 
         loop_rate.sleep();
-	}
+    }
 }

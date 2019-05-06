@@ -73,24 +73,24 @@ class Obstacle
 
 class MPC
 {
-	public:
-		static const unsigned int HorizonLength = ACADO_N;		// 'WNmat' needs to be a double matrix of size [ACADO_NY x ACADO_NY]
+    public:
+        static const unsigned int HorizonLength = ACADO_N;        // 'WNmat' needs to be a double matrix of size [ACADO_NY x ACADO_NY]
         static constexpr double RobotRadius = 0.1; // radius of robot in meters
 
-		// Weight definitions
+        // Weight definitions
         static const double WPathFollow;
         static const double WVelocity;
         static const double WSmoothness;
         static const double Wdiag[ACADO_NY]; // Horizon weight matrix (cost)
         static const double WNdiag[ACADO_NYN]; // Final state weight matrix (cost)
 
-	private:
-		static ACADO_t& ACADO;
-		static constexpr unsigned int num_StateVariables = ACADO_NX;	// 'xInit' needs to be a double vector of size [ACADO_NX x 1]
-		static constexpr unsigned int num_Inputs = ACADO_NU;		    // 'uInit' needs to be a double vector of size [ACADO_NU x 1]
-		static constexpr unsigned int num_Outputs = ACADO_NY;		    // 'Wmat' needs to be a double matrix of size [ACADO_NY x ACADO_NY]
-		static constexpr unsigned int num_FinalOutputs = ACADO_NYN;		// 'WNmat' needs to be a double matrix of size [ACADO_NYN x ACADO_NYN]
-		static constexpr unsigned int num_OnlineData = ACADO_NOD;		// 'odInit' needs to be a double matrix of size [ACADO_N+1 x ACADO_NOD]
+    private:
+        static ACADO_t& ACADO;
+        static constexpr unsigned int num_StateVariables = ACADO_NX;    // 'xInit' needs to be a double vector of size [ACADO_NX x 1]
+        static constexpr unsigned int num_Inputs = ACADO_NU;            // 'uInit' needs to be a double vector of size [ACADO_NU x 1]
+        static constexpr unsigned int num_Outputs = ACADO_NY;            // 'Wmat' needs to be a double matrix of size [ACADO_NY x ACADO_NY]
+        static constexpr unsigned int num_FinalOutputs = ACADO_NYN;        // 'WNmat' needs to be a double matrix of size [ACADO_NYN x ACADO_NYN]
+        static constexpr unsigned int num_OnlineData = ACADO_NOD;        // 'odInit' needs to be a double matrix of size [ACADO_N+1 x ACADO_NOD]
                                                                         // 'refInit' needs to be a double matrix of size [ACADO_N+1 x ACADO_NY]
 
     public:
@@ -103,34 +103,34 @@ class MPC
             double pathVelocity;
         } state_t;
 
-	    typedef enum orientation_selection_t : uint8_t
+        typedef enum orientation_selection_t : uint8_t
         {
-	        INERTIAL_FRAME = 0,
-	        HEADING_FRAME = 1,
-	        VELOCITY_FRAME = 2
+            INERTIAL_FRAME = 0,
+            HEADING_FRAME = 1,
+            VELOCITY_FRAME = 2
         } orientation_selection_t;
 
-	    typedef enum status_t
+        typedef enum status_t
         {
             SUCCESS = 0,
             ITERATION_LIMIT_REACHED = 1,
             INFEASIBLE = -2,
             UNBOUNDED = -3,
-			OTHER = -1
+            OTHER = -1
         } status_t;
 
-	public:
-		MPC();
-		~MPC();
+    public:
+        MPC();
+        ~MPC();
 
-		void Reset();
-		void Step();
+        void Reset();
+        void Step();
 
         void setPath(Path& path, const Eigen::Vector2d& origin, const Eigen::Vector2d& currentPosition);
         void setXYreferencePosition(double x, double y);
         void setObstacles(std::vector<Obstacle>& obstacles);
-		void setVelocityBounds(double min_velocity, double max_velocity);
-		void setDesiredVelocity(double velocity);
+        void setVelocityBounds(double min_velocity, double max_velocity);
+        void setDesiredVelocity(double velocity);
 
         double getWindowAngularVelocityX(void);
         double getWindowAngularVelocityY(void);
@@ -138,7 +138,7 @@ class MPC
         Eigen::Vector2d getInertialAngularVelocity(void);
         std::vector<std::pair<double,double>> getInertialAngularVelocityHorizon(void);
 
-		void setCurrentState(const Eigen::Vector2d& position, const Eigen::Vector2d& velocity, const boost::math::quaternion<double>& q);
+        void setCurrentState(const Eigen::Vector2d& position, const Eigen::Vector2d& velocity, const boost::math::quaternion<double>& q);
         void setControlLimits(double maxAngularVelocity, double maxAngle);
         void setWeights(const Eigen::MatrixXd& W, const Eigen::MatrixXd& WN);
 
@@ -156,12 +156,12 @@ class MPC
 
         Trajectory getCurrentTrajectory(void);
         Path getCurrentPath(void);
-		double getClosestPointOnPath(void);
+        double getClosestPointOnPath(void);
 
-		double extractHeading(const boost::math::quaternion<double>& q);
+        double extractHeading(const boost::math::quaternion<double>& q);
 
-		double getSampleTime() const;
-		double getSolveTime() const;
+        double getSampleTime() const;
+        double getSolveTime() const;
         double getCurrentPathPosition() const;
         status_t getStatus() const;
 
@@ -171,7 +171,7 @@ class MPC
         void setReferences(void);
         void shiftStates(void);
 
-	private:
+    private:
         Trajectory currentTrajectory_;
         std::vector<Obstacle> currentObstacles_;
 
@@ -191,22 +191,22 @@ class MPC
         double windowPathLength_;
         Eigen::Vector2d windowPathOrigin_; // origin of path in inertial frame - hence what (0,0) of path corresponds to in inertial coordinates
         double closestPositionOnCurrentPathToOrigin_; // this corresponds to the initialization value of the 's' parameter - however this is actually input as OnlineData instead
-		unsigned int pathApproximationOrder_;
+        unsigned int pathApproximationOrder_;
         orientation_selection_t WindowOrientationSelection_;
 
-		/* Both position and velocity is defined in inertial frame */
+        /* Both position and velocity is defined in inertial frame */
         Eigen::Vector2d position_;
         Eigen::Vector2d velocity_;
-		boost::math::quaternion<double> quaternion_;
+        boost::math::quaternion<double> quaternion_;
 
-		/* Solver status and outputs */
-		status_t SolverStatus_;
-		double SolverKKT_;
-		double SolverCostValue_;
-		int SolverIterations_;
-		double SolveTime_;
+        /* Solver status and outputs */
+        status_t SolverStatus_;
+        double SolverKKT_;
+        double SolverCostValue_;
+        int SolverIterations_;
+        double SolveTime_;
     };
-	
+    
 }
-	
+    
 #endif
