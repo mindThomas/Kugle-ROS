@@ -36,7 +36,7 @@ rosdep install --from-paths src --ignore-src -r -y
 ### Building
 Build the project with catkin build
 ```bash
-cd ~/kugle_simulation_ws
+cd ~/kugle_ws
 catkin build
 source devel/setup.bash
 ```
