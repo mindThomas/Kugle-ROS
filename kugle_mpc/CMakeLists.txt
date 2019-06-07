@@ -203,6 +203,12 @@ target_link_libraries(kugle_mpc_plugin ${catkin_LIBRARIES} mpc) # global_planner
 #   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 # )
 
+install(
+    TARGETS kugle_mpc_plugin
+    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+    LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+)
+
 #############
 ## Testing ##
 #############

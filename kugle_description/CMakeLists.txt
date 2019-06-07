@@ -181,6 +181,11 @@ include_directories(
 #   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 # )
 
+install(
+    DIRECTORY models rviz urdf
+    DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+)
+
 #############
 ## Testing ##
 #############

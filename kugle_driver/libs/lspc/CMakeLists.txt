@@ -21,3 +21,9 @@ target_link_libraries( lspc ${library_dependencies} )
 target_include_directories( lspc PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/LSPC/)
 
 set_target_properties( lspc PROPERTIES COMPILE_FLAGS "-g -Wall -Wextra" ) # enable debugging
+
+install(
+    TARGETS lspc
+    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+    LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+)

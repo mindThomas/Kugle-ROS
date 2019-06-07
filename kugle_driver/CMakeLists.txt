@@ -160,6 +160,17 @@ target_link_libraries(kugle_driver_node lspc ${catkin_LIBRARIES})
 #   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 # )
 
+install(
+    TARGETS test_node kugle_driver_node
+    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+    LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+)
+
+install(
+    DIRECTORY cfg config launch
+    DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+)
+
 #############
 ## Testing ##
 #############

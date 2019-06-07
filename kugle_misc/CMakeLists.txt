@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   nav_msgs
   tf
+  tf2_geometry_msgs
   kugle_msgs
   kugle_srvs
 )
@@ -112,7 +113,7 @@ include_directories(${Boost_INCLUDE_DIRS})
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES
-  CATKIN_DEPENDS roscpp std_msgs geometry_msgs sensor_msgs nav_msgs tf kugle_msgs kugle_srvs
+  CATKIN_DEPENDS roscpp std_msgs geometry_msgs sensor_msgs nav_msgs tf tf2_geometry_msgs kugle_msgs kugle_srvs
   DEPENDS
 )
 
@@ -211,6 +212,14 @@ target_link_libraries(joystick_mapper_node ${catkin_LIBRARIES})
 #   # myfile2
 #   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 # )
+
+install(
+    TARGETS 
+	FirstOrderLPF Quaternion QuaternionVelocityControl
+	quaternion_integrator_node velocity_controller_node joystick_mapper_node
+    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+    LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+)
 
 #############
 ## Testing ##

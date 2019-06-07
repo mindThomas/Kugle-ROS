@@ -183,6 +183,11 @@ include_directories(
 #   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 # )
 
+install(
+    DIRECTORY launch maps param
+    DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+)
+
 #############
 ## Testing ##
 #############
