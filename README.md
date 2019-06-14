@@ -176,6 +176,12 @@ rosrun rqt_reconfigure rqt_reconfigure kugle_driver
 <img alt="Reconfigure GUI (rqt_reconfigure)" src="rqt_reconfigure.png" width="50%" />
 </div>
 
+If you experience an error while trying to open the reconfigure GUI, then try to restart the Kugle driver (restart the service on the robot).
+```bash
+./ConnectKugleSSH.sh
+sudo service kugle restart
+```
+
 ## RVIZ display
 An RVIZ visualization of the robot can be launched by running
 ```bash
