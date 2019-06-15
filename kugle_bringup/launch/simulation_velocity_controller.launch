@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<launch>
+
+	<include file="$(find kugle_gazebo)/launch/gazebo.launch">
+		<arg name="gui" value="true"/> <!-- Choose to spawn the Gazebo GUI or run the simulation "headless -->
+	</include>
+
+	<!-- Convert depth image from RGBD camera into registered (hence colored) pointcloud -->
+	<include file="$(find kugle_bringup)/launch/depth_to_pointcloud.launch">
+		<arg name="rgb_camera_info" value="/realsense/camera/color/camera_info"/>
+		<arg name="rgb_img_rect" value="/realsense/camera/color/image_raw"/>  <!-- Rectified (undistorted) color image -->
+		<arg name="depReg_imgraw" value="/realsense/camera/depth/image_raw"/>  <!-- Raw depth image -->
+  		<arg name="depReg_imgrect" value="/realsense/camera/depth/image_rect"/>  <!-- Raw depth image -->
+		<arg name="out_cloud" value="/realsense/camera/depth_registered/points"/>
+	</include>
+
+	<!-- Convert depth image from RGBD camera into laser scan -->
+	<include file="$(find kugle_bringup)/launch/depth_to_laser.launch">
+		<arg name="frame_id" value="depth"/> <!-- this frame name is published by the Realsense Gazebo plugin -->
+		<arg name="depth_image" value="/realsense/camera/depth/image_raw"/>
+		<arg name="depth_camera_info" value="/realsense/camera/depth/camera_info"/>
+		<arg name="scan_topic" value="/realsense/scan"/>
+		<arg name="use_nodelet" value="true"/>
+	</include>
+
+	<!-- respawn=true means that in case the node shuts down it will be restarted -->
+	<!--<group ns="kugle">-->
+	<node name="velocity_controller_node" pkg="kugle_misc" type="velocity_controller_node" respawn="true" output="screen"> 
+		<remap from="cmd_quaternion" to="cmd_quaternion" />
+		<remap from="cmd_vel" to="cmd_vel" />
+		<remap from="cmd_vel_inertial" to="cmd_vel_inertial" />
+		<remap from="odom" to="odom" />
+		<remap from="StateEstimate" to="StateEstimate" />
+
+		<param name="rate" type="double" value="200" />
+		<param name="velocity_error_clamp" type="double" value="0.15" />
+		<param name="max_tilt" type="double" value="5.0" />
+		<param name="integral_gain" type="double" value="0.0" />
+		<param name="max_integral_correction" type="double" value="8.0" />
+	</node>
+	<!--</group>-->
+
+</launch>

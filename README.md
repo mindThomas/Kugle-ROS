@@ -230,15 +230,24 @@ Note that the above steps can either be performed on the onboard computer or on 
 # Simulation
 The ROS driver can be used with the Gazebo simulation of the Kugle found in https://github.com/mindThomas/Kugle-Gazebo
 
-A simulation environment with ROS topics matching the ROS driver can be launched with
+A simulation environment with ROS topics matching the ROS driver can be launched with one of two launch files.
+To launch a simulation of Kugle with the Balance controller running (taking in Quaternion references) execute:
 ```bash
-roslaunch kugle_launch simulation.launch
+roslaunch kugle_bringup simulation_balance_controller.launch
 ```
+To launch a simulation of Kugle with the Velocity controller (taking in Velocity references) execute:
+```bash
+roslaunch kugle_bringup simulation_velocity_controller.launch
+```
+
+If you experience an error during the launch of the simulation, then retry by stopping the simulation with `CTRL+C` and start it again.
 
 In the default RVIZ view opened after starting the simulation the Kugle robot will show up "white" because the `Fixed Frame` is set to `map` and the localization node has not be started. After running the `localization.launch` (see above) the Kugle robot should show up properly. Another option is to set the `Fixed Frame` to `world`.
 
 ## MPC simulation
-A model predictive controller, derived using ACADO, has been implemented as a local planner for the Kugle robot. To run the MPC on the simulated Kugle robot the `localization` node has to be running. The MPC node is started by running
+A model predictive controller, derived using ACADO, has been implemented as a local planner for the Kugle robot. To run the MPC on the simulated Kugle robot the [Balance controller simulation](#simulation) has to be used and the [`localization`](#localization-node) node should be running (see above).
+
+The MPC node is started by running
 ```bash
 roslaunch kugle_launch mpc.launch
 ```

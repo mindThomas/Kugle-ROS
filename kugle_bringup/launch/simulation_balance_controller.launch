@@ -33,18 +33,4 @@
 		<param name="rate" type="double" value="200" />
 	</node>
 
-	<!--<node name="velocity_controller_node" pkg="kugle_misc" type="velocity_controller_node" respawn="true" output="screen"> 
-		<remap from="cmd_quaternion" to="cmd_quaternion" />
-		<remap from="odom" to="odom" />
-		<remap from="cmd_vel" to="cmd_vel" />
-		<remap from="cmd_vel_inertial" to="cmd_vel_inertial" />
-
-		<param name="rate" type="double" value="10" />
-		<param name="velocity_error_clamp" type="double" value="0.15" />
-		<param name="max_tilt" type="double" value="5.0" />
-		<param name="integral_gain" type="double" value="0.0" />
-		<param name="max_integral_correction" type="double" value="8.0" />
-	</node>-->
-	<!--</group>-->
-
 </launch>
