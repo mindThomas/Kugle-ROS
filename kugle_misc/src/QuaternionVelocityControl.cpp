@@ -153,15 +153,16 @@ void QuaternionVelocityControl::Step(const double q[4], const double dxy[2], con
 	Velocity_Reference_Filtered[0] = dx_ref_filt_.Filter(velocityRef[0]);
 	Velocity_Reference_Filtered[1] = dy_ref_filt_.Filter(velocityRef[1]);
 
-	if (velocityRefGivenInHeadingFrame) { // reference given in inertial frame
+	if (velocityRefGivenInHeadingFrame) { // reference given in heading frame
 		// Calculate velocity error
         Velocity_Heading_q[1] -= Velocity_Reference_Filtered[0];
         Velocity_Heading_q[2] -= Velocity_Reference_Filtered[1];
 	}
-	else  // reference given in heading frame
+	else  // reference given in inertial frame
     {
         double Velocity_Ref_Inertial_q[4] = {0, Velocity_Reference_Filtered[0], Velocity_Reference_Filtered[1], 0};
         double Velocity_Ref_Heading_q[4];
+        // Rotate reference from inertial frame to heading frame
         //Velocity_Ref_Heading = [0,1,0,0;0,0,1,0] * Phi(q)' * Gamma(q) * [0;Velocity_Ref;0];
         double tmp_q[4];
         Quaternion_Gamma(q, Velocity_Ref_Inertial_q, tmp_q); // Gamma(q) * [0;Velocity_Ref;0];
@@ -189,7 +190,7 @@ void QuaternionVelocityControl::Step(const double q[4], const double dxy[2], con
 	q_heading[3] = sin(headingRef/2);
 
 	double normVelocity_Heading = sqrt(Velocity_Heading[0]*Velocity_Heading[0] + Velocity_Heading[1]*Velocity_Heading[1]);
-	if (normVelocity_Heading == 0) {
+	if (normVelocity_Heading < zero_velocity) {
 		// Return upright quaternion (with heading reference) if we have no velocity, since we are then where we are supposed to be
 		q_ref_out[0] = q_heading[0];
 		q_ref_out[1] = q_heading[1];
@@ -211,7 +212,7 @@ void QuaternionVelocityControl::Step(const double q[4], const double dxy[2], con
 	q_tilt[2] = sin(CorrectionAmountRadian/2)*CorrectionDirection[1];
 	q_tilt[3] = 0;
 
-	if (velocityRef[0] != 0 || velocityRef[1] != 0) {
+	if (velocityRef[0] > zero_velocity || velocityRef[1] > zero_velocity) {
 		CorrectionAmountRadian = 0; // only do integral action when velocity reference is zero
 	}
 

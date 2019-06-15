@@ -77,6 +77,8 @@ class QuaternionVelocityControl
 			double IntegralGain = 0.3; // integral gain, which corresponds to the incremental compensation rate (1/gain is the number of seconds it takes the integral to reach a constant offset value)
 			double MaxIntegralCorrection = 8.0; // max tilt integral effect can compensate with [degrees]
 		} params_;
+
+		const double zero_velocity = 0.001; // velocity identified as zero velocity [m/s]
 };
 	
 	

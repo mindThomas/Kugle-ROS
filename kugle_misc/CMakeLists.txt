@@ -24,6 +24,8 @@ find_package(catkin REQUIRED COMPONENTS
 find_package(Boost REQUIRED COMPONENTS thread)
 include_directories(${Boost_INCLUDE_DIRS})
 
+## Find Eigen
+find_package(Eigen3 REQUIRED)
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -112,7 +114,7 @@ include_directories(${Boost_INCLUDE_DIRS})
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include
-  LIBRARIES
+  LIBRARIES Quaternion MathLib FirstOrderLPF
   CATKIN_DEPENDS roscpp std_msgs geometry_msgs sensor_msgs nav_msgs tf tf2_geometry_msgs kugle_msgs kugle_srvs
   DEPENDS
 )
@@ -125,6 +127,7 @@ catkin_package(
 ## Your package locations should be listed before other locations
 include_directories(
   include
+  ${EIGEN3_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
 )
 
@@ -158,20 +161,39 @@ include_directories(
 #   ${catkin_LIBRARIES}
 # )
 
+## Add libraries
+add_library( FirstOrderLPF SHARED src/FirstOrderLPF.cpp )
+target_link_libraries( FirstOrderLPF ${catkin_LIBRARIES} m stdc++ )
+target_include_directories( FirstOrderLPF PUBLIC include )
+#set_target_properties( FirstOrderLPF PROPERTIES COMPILE_FLAGS "-g -Wall -Wextra" ) # enable debugging
+
+add_library( Quaternion SHARED src/Quaternion.cpp )
+target_link_libraries( Quaternion ${catkin_LIBRARIES} m stdc++ MathLib )
+target_include_directories( Quaternion PUBLIC include )
+#set_target_properties( Quaternion PROPERTIES COMPILE_FLAGS "-g -Wall -Wextra" ) # enable debugging
+
+add_library( MathLib SHARED src/MathLib.cpp )
+target_link_libraries( MathLib ${catkin_LIBRARIES} m stdc++ )
+target_include_directories( MathLib PUBLIC include )
+#set_target_properties( MathLib PROPERTIES COMPILE_FLAGS "-g -Wall -Wextra" ) # enable debugging
+
+
+## Add nodes/binaries
 add_executable(quaternion_integrator_node src/quaternion_integrator_node.cpp)
 add_dependencies(quaternion_integrator_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(quaternion_integrator_node ${catkin_LIBRARIES})
-
-add_library(FirstOrderLPF src/FirstOrderLPF.cpp)
-add_library(Quaternion src/Quaternion.cpp)
 
 add_library(QuaternionVelocityControl src/QuaternionVelocityControl.cpp)
 add_dependencies(QuaternionVelocityControl ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(QuaternionVelocityControl Quaternion FirstOrderLPF ${catkin_LIBRARIES})
 
+add_library(VelocityLQR src/VelocityLQR.cpp)
+add_dependencies(VelocityLQR ${${PROJECT_NAME}_EXPORTED_TARGETS} Quaternion ${catkin_EXPORTED_TARGETS})
+target_link_libraries(VelocityLQR Quaternion FirstOrderLPF ${Eigen3_LIBRARIES} ${catkin_LIBRARIES})
+
 add_executable(velocity_controller_node src/velocity_controller_node.cpp)
 add_dependencies(velocity_controller_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(velocity_controller_node QuaternionVelocityControl ${catkin_LIBRARIES})
+target_link_libraries(velocity_controller_node QuaternionVelocityControl VelocityLQR ${catkin_LIBRARIES})
 
 add_executable(joystick_mapper_node src/joystick_mapper_node.cpp)
 add_dependencies(joystick_mapper_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
@@ -215,10 +237,12 @@ target_link_libraries(joystick_mapper_node ${catkin_LIBRARIES})
 
 install(
     TARGETS 
-	FirstOrderLPF Quaternion QuaternionVelocityControl
+	FirstOrderLPF Quaternion MathLib
+	QuaternionVelocityControl
 	quaternion_integrator_node velocity_controller_node joystick_mapper_node
-    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
     LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+    RUNTIME DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+    ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 )
 
 #############

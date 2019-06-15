@@ -49,3 +49,12 @@ target_link_libraries( mpc ${library_dependencies} )
 target_include_directories( mpc PUBLIC ${include_directories})
 
 set_target_properties( mpc PROPERTIES COMPILE_FLAGS "-g -Wall -Wextra -D__CODE_GENERATION__ -DQPOASES_CUSTOM_INTERFACE=\"acado_qpoases3_interface.h\"" ) # enable debugging
+
+install(
+    TARGETS mpc
+    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+    LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+    LIBRARY DESTINATION lib ${CATKIN_PACKAGE_LIB_DESTINATION}
+    RUNTIME DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+    ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+)

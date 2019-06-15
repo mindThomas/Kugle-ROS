@@ -18,6 +18,7 @@
 
 #include <ros/ros.h>
 #include <kugle_misc/QuaternionVelocityControl.h>
+#include <kugle_misc/VelocityLQR.h>
 
 int main(int argc, char **argv) {
 	std::string nodeName = "velocity_control";
@@ -27,6 +28,7 @@ int main(int argc, char **argv) {
 	double rate;
 	n.param("rate", rate, double(10));
 
-	kugle_misc::QuaternionVelocityControl velocityControl(rate);
+	//kugle_misc::QuaternionVelocityControl velocityControl(rate);
+	kugle_misc::VelocityLQR velocityControl(rate);
 	ros::spin();
 }
