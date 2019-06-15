@@ -202,7 +202,16 @@ void LSPC_Callback_StateEstimates(ros::Publisher& pubOdom, ros::Publisher& pubSt
     // q_omega_body = 2*inv(q) o dq
     tf::Quaternion q_omega_body = q_attitude.inverse() * dq * 2;
 
+    /* Compute velocity in body frame for odometry message */
+    // v_body = devec * (q* o vec*v_inertial o q)
+    // v_body = devec * Phi(q)^T * Gamma(q) * vec*v_inertial
+    tf::Quaternion q_vel_inertial(msg->vel.x, msg->vel.y, 0, 0); // x,y,z,w
+    tf::Quaternion q_vel_body = q_attitude.inverse() * q_vel_inertial * q_attitude;
+
     /* Send odometry message */
+    //   This represents an estimate of a position and velocity in free space.
+    //   The pose in this message should be specified in the coordinate frame given by header.frame_id
+    //   The twist in this message should be specified in the coordinate frame given by the child_frame_id
     nav_msgs::Odometry odom_msg;
     odom_msg.header.stamp = ros::Time::now();
     odom_msg.header.frame_id = "odom";
@@ -214,8 +223,9 @@ void LSPC_Callback_StateEstimates(ros::Publisher& pubOdom, ros::Publisher& pubSt
     odom_msg.pose.pose.orientation.x = q_attitude.x();
     odom_msg.pose.pose.orientation.y = q_attitude.y();
     odom_msg.pose.pose.orientation.z = q_attitude.z();
-    odom_msg.twist.twist.linear.x = msg->vel.x; // inertial frame velocity
-    odom_msg.twist.twist.linear.y = msg->vel.y;
+    odom_msg.twist.twist.linear.x = q_vel_body.x(); // body frame velocity
+    odom_msg.twist.twist.linear.y = q_vel_body.y();
+    odom_msg.twist.twist.linear.z = q_vel_body.z();
     odom_msg.twist.twist.angular.x = q_omega_body.x();
     odom_msg.twist.twist.angular.y = q_omega_body.y();
     odom_msg.twist.twist.angular.z = q_omega_body.z();

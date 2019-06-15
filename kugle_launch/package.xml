@@ -50,6 +50,7 @@
   <!--   <doc_depend>doxygen</doc_depend> -->
   <buildtool_depend>catkin</buildtool_depend>
   <exec_depend>joy</exec_depend>
+  <exec_depend>turtlebot_teleop</exec_depend>
   <exec_depend>kugle_description</exec_depend>
   <exec_depend>kugle_gazebo</exec_depend>
   <exec_depend>kugle_misc</exec_depend>
