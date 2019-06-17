@@ -38,15 +38,22 @@ namespace MPC {
 
     ACADO_t& MPC::ACADO = *((ACADO_t *)&acadoVariables);
 
-    const double MPC::WPathFollow = 100.0;
-    const double MPC::WVelocity = 2.0;
-    const double MPC::WSmoothness = 10.0;
+    const double MPC::WPathFollow = 9999;  // weight on longitudinal tracking error - should be high to achieve accurate path following
+    const double MPC::WLateral = 25;  // weight on lateral tracking error
+    const double MPC::WVelocity = 80;  // weight on error between desired velocity and actual longitudinal velocity
+    const double MPC::WProgress = 0;  // punishment of being far away from the end of the fitted path
+    const double MPC::WSmoothness = 100;  // punishment of changes in angular velocity reference (hence weight on d_omega_ref)
+    const double MPC::WOmega = 20;  // weight on angular velocity reference (omega_ref)
+    const double MPC::WAngle = 10;  // weight on angle reference
+    const double MPC::WObstacles = 20;  // weight on the exponential obstacle proximity, defined by an offset and scale value
+    const double MPC::ProximityOffset = 0.3;  // exponential obstacle offset
+    const double MPC::ProximityScale = 10;  // exponential obstacle scale
 
     // Horizon weight matrix (cost)
-    const double MPC::Wdiag[ACADO_NY] = {MPC::WPathFollow, MPC::WPathFollow,  0.1,0.1,  0.1,0.1,  999.0,MPC::WVelocity,  MPC::WSmoothness,MPC::WSmoothness,  99999.0,99999999.0}; // { x_err;y_err; q2;q3;  omega_ref_x;omega_ref_y;  velocity_matching; velocity_error;   domega_ref_x;domega_ref_y;   velocity_slack_variable;angle_slack_variable;proximity_slack_variable }
+    const double MPC::Wdiag[ACADO_NY] = {MPC::WPathFollow, MPC::WLateral,  MPC::WAngle,MPC::WAngle,  MPC::WOmega,MPC::WOmega,  MPC::WVelocity,MPC::WProgress,  MPC::WSmoothness,MPC::WSmoothness,  MPC::WObstacles,  99999.0,9999.0,9999.0}; // { lag_error; lateral_deviation;  q2;q3;  omega_ref_x;omega_ref_y;  velocity_error; away_from_end_error;   domega_ref_x;domega_ref_y;   obstacle_proximity;   velocity_slack;angle_slack;proximity_slack }
 
     // Final state weight matrix (cost)
-    const double MPC::WNdiag[ACADO_NYN] = {MPC::WPathFollow, MPC::WPathFollow,  1000*0.1,1000*0.1,  1000*0.1,1000*0.1,  0*999.0,0*MPC::WVelocity}; // { x_err;y_err; q2;q3;  omega_ref_x;omega_ref_y;  velocity_matching; velocity_error }
+    const double MPC::WNdiag[ACADO_NYN] = {MPC::WPathFollow, 10*MPC::WLateral,  MPC::WAngle,MPC::WAngle,  MPC::WOmega,MPC::WOmega,  MPC::WVelocity,MPC::WProgress,  MPC::WObstacles}; // { lag_error; lateral_deviation;  q2;q3;  omega_ref_x;omega_ref_y;  velocity_error; away_from_end_error;   obstacle_proximity }
 
 
     MPC::MPC()
@@ -74,9 +81,10 @@ namespace MPC {
         setWeights(Wdiag_.asDiagonal().toDenseMatrix(), WNdiag_.asDiagonal().toDenseMatrix());
 
         // Set internal to default values
-        setVelocityBounds(0.0, 3.0);
+        setVelocityBounds(0.0, 10.0);
         setDesiredVelocity(1.0);
-        setControlLimits(deg2rad(30), deg2rad(10));
+        setControlLimits(deg2rad(10), deg2rad(15), deg2rad(30));
+        setObstacleProximityParameters(ProximityOffset, ProximityScale);
         setReferences();
 
         // Set an empty reference path
@@ -102,7 +110,8 @@ namespace MPC {
         // Set internal parameters
         setVelocityBounds(minVelocity_, maxVelocity_);
         setDesiredVelocity(desiredVelocity_);
-        setControlLimits(maxAngularVelocity_, maxAngle_);
+        setControlLimits(maxAngle_, maxAngularVelocity_, maxAngularAcceleration_);
+        setObstacleProximityParameters(proximityOffset_, proximityScale_);
         setReferences();
 
         // Set current path and states
@@ -122,8 +131,8 @@ namespace MPC {
     {
         double PreviousHorizonLength = getHorizonPathLength();
         double ExtractionLength = 1.3*PreviousHorizonLength; // 1.3*HorizonLength*ACADO_TS*desiredVelocity_
-        if (ExtractionLength < 2.0)
-            ExtractionLength = 2.0;
+        if (ExtractionLength < 3.0)
+            ExtractionLength = 3.0;
 
         ExtractWindowTrajectory(trajectory, currentTrajectory_, position, velocity, q, ExtractionLength, false, WindowOrientationSelection_); // change the last parameter/flag to:  0=window in inertial frame,  1=window in heading frame,  2=window in velocity direction frame
         //currentTrajectory_.print(); currentTrajectory_.plot(true); cv::waitKey(0);
@@ -237,6 +246,7 @@ namespace MPC {
 
             ACADO.od[i].trajectoryLength = windowPathLength_;
             ACADO.od[i].trajectoryStart = closestPositionOnCurrentPathToOrigin_;
+            ACADO.od[i].desiredVelocity = desiredVelocity_;
         }
 
         // Reset horizon predictions for the movement on the path (s-value)
@@ -252,7 +262,7 @@ namespace MPC {
         // This results in ACADO.x[0].s = 0 and the path value predictions are then increasing from there
 
         if ((ACADO.x[ACADO_N].s + closestPositionOnCurrentPathToOrigin_) > windowPathLength_) {
-            // Current MPC horizon initialization is running outside of new path. Reset to evenly space the s-values along path
+            // Current MPC horizon initialization is running outside of new path. Reset to evenly spaced s-values along path
             double s_value = 0;
             double s_spacing = (windowPathLength_ - closestPositionOnCurrentPathToOrigin_) / (ACADO_N-1);
             for (unsigned int i = 1; i < (ACADO_N+1); i++) {
@@ -277,7 +287,7 @@ namespace MPC {
         // Set path for full horizon
         for (unsigned int i = 0; i < (ACADO_N+1); i++) {
             ACADO.od[i].cx0 = 0;
-            ACADO.od[i].cx1 = 1000; // OBS. Even though we just want to hold the position, we still need to set a valid path due to the way the MPC tries to take the derivative
+            ACADO.od[i].cx1 = 0.0001; // OBS. Even though we just want to hold the position, we still need to set a valid path due to the way the MPC tries to take the derivative
             ACADO.od[i].cx2 = 0;
             ACADO.od[i].cx3 = 0;
             ACADO.od[i].cx4 = 0;
@@ -300,6 +310,7 @@ namespace MPC {
 
             ACADO.od[i].trajectoryLength = windowPathLength_;
             ACADO.od[i].trajectoryStart = 0;
+            ACADO.od[i].desiredVelocity = 0;
         }
 
         // Reset horizon predictions for the movement on the path (s-value)
@@ -315,11 +326,15 @@ namespace MPC {
         currentObstacles_ = obstacles;
 
         // Sort the obstacles to extract and use the nearest obstacles
-        std::sort(currentObstacles_.begin(), currentObstacles_.end(), std::bind(&Obstacle::proximitySorting, windowPathOrigin_, std::placeholders::_1, std::placeholders::_2));
+        Eigen::Vector2d horizonEndPosition = getHorizonState(ACADO_N).position;
+        std::sort(currentObstacles_.begin(), currentObstacles_.end(), std::bind(&Obstacle::proximitySorting, horizonEndPosition, std::placeholders::_1, std::placeholders::_2));
+
+        consideredObstacles_.clear();
 
         // Set obstacles throughout full horizon
         Eigen::Vector2d obstacle, obstacle_in_window;
         if (currentObstacles_.size() >= 1) {
+            consideredObstacles_.push_back(currentObstacles_.at(0));
             obstacle[0] = currentObstacles_.at(0).x - windowPathOrigin_[0];
             obstacle[1] = currentObstacles_.at(0).y - windowPathOrigin_[1];
             Eigen::Matrix2d rot = Eigen::Rotation2Dd(-WindowOrientation_).toRotationMatrix();
@@ -337,6 +352,7 @@ namespace MPC {
             }
         }
         if (currentObstacles_.size() >= 2) {
+            consideredObstacles_.push_back(currentObstacles_.at(1));
             obstacle[0] = currentObstacles_.at(1).x - windowPathOrigin_[0];
             obstacle[1] = currentObstacles_.at(1).y - windowPathOrigin_[1];
             Eigen::Matrix2d rot = Eigen::Rotation2Dd(-WindowOrientation_).toRotationMatrix();
@@ -354,6 +370,7 @@ namespace MPC {
             }
         }
         if (obstacles.size() >= 3) {
+            consideredObstacles_.push_back(currentObstacles_.at(2));
             obstacle[0] = currentObstacles_.at(2).x - windowPathOrigin_[0];
             obstacle[1] = currentObstacles_.at(2).y - windowPathOrigin_[1];
             Eigen::Matrix2d rot = Eigen::Rotation2Dd(-WindowOrientation_).toRotationMatrix();
@@ -371,6 +388,7 @@ namespace MPC {
             }
         }
         if (currentObstacles_.size() >= 4) {
+            consideredObstacles_.push_back(currentObstacles_.at(3));
             obstacle[0] = currentObstacles_.at(3).x - windowPathOrigin_[0];
             obstacle[1] = currentObstacles_.at(3).y - windowPathOrigin_[1];
             Eigen::Matrix2d rot = Eigen::Rotation2Dd(-WindowOrientation_).toRotationMatrix();
@@ -388,6 +406,7 @@ namespace MPC {
             }
         }
         if (currentObstacles_.size() >= 5) {
+            consideredObstacles_.push_back(currentObstacles_.at(4));
             obstacle[0] = currentObstacles_.at(4).x - windowPathOrigin_[0];
             obstacle[1] = currentObstacles_.at(4).y - windowPathOrigin_[1];
             Eigen::Matrix2d rot = Eigen::Rotation2Dd(-WindowOrientation_).toRotationMatrix();
@@ -428,8 +447,9 @@ namespace MPC {
         }
     }
 
-    void MPC::setControlLimits(double maxAngularVelocity, double maxAngle)
+    void MPC::setControlLimits(double maxAngle, double maxAngularVelocity, double maxAngularAcceleration)
     {
+        maxAngularAcceleration_ = maxAngularAcceleration;
         maxAngularVelocity_ = maxAngularVelocity;
         maxAngle_ = maxAngle;
 
@@ -437,6 +457,19 @@ namespace MPC {
         for (unsigned int i = 0; i < (ACADO_N+1); i++) {
             ACADO.od[i].maxAngle = maxAngle_;
             ACADO.od[i].maxOmegaRef = maxAngularVelocity_;
+            ACADO.od[i].maxdOmegaRef = maxAngularAcceleration_;
+        }
+    }
+
+    void MPC::setObstacleProximityParameters(double proximityOffset, double proximityScale)
+    {
+        proximityOffset_ = proximityOffset;
+        proximityScale_ = proximityScale;
+
+        // Set bounds for the full horizon
+        for (unsigned int i = 0; i < (ACADO_N+1); i++) {
+            ACADO.od[i].proximityOffset = proximityOffset_;
+            ACADO.od[i].proximityScale = proximityScale_;
         }
     }
 
@@ -470,27 +503,30 @@ namespace MPC {
     void MPC::setReferences(void)
     {
         for (unsigned int i = 0; i < ACADO_N; i++) {
-            ACADO.y[i].x_err = 0;
-            ACADO.y[i].y_err = 0;
+            ACADO.y[i].lag_error = 0;
+            ACADO.y[i].lateral_deviation = 0;
             ACADO.y[i].q2 = 0;
             ACADO.y[i].q3 = 0;
             ACADO.y[i].omega_ref_x = 0;
             ACADO.y[i].omega_ref_y = 0;
-            ACADO.y[i].velocity_matching = 0;
             ACADO.y[i].velocity_error = 0;
+            ACADO.y[i].away_from_end_error = 0;
             ACADO.y[i].domega_ref_x = 0;
             ACADO.y[i].domega_ref_y = 0;
+            ACADO.y[i].obstacle_proximity = 0;
             ACADO.y[i].velocity_slack = 0;
+            ACADO.y[i].angle_slack = 0;
             ACADO.y[i].proximity_slack = 0;
         }
-        ACADO.yN.x_err = 0;
-        ACADO.yN.y_err = 0;
+        ACADO.yN.lag_error = 0;
+        ACADO.yN.lateral_deviation = 0;
         ACADO.yN.q2 = 0;
         ACADO.yN.q3 = 0;
         ACADO.yN.omega_ref_x = 0;
         ACADO.yN.omega_ref_y = 0;
-        ACADO.yN.velocity_matching = 0;
         ACADO.yN.velocity_error = 0;
+        ACADO.yN.away_from_end_error = 0;
+        ACADO.yN.obstacle_proximity = 0;
     }
 
     double MPC::extractHeading(const boost::math::quaternion<double>& q)
@@ -513,7 +549,7 @@ namespace MPC {
         if (q_tilt.R_component_1() < 0)
             q_tilt = -q_tilt; // invert q_tilt to take shortest rotation
 
-        /* Compute rotation matrix for path window orientation */
+        /* Compute rotation matrix for path window orientation - rotates a vector from inertial frame to window frame*/
         Eigen::Matrix2d R_window = Eigen::Rotation2Dd(WindowOrientation_).toRotationMatrix().transpose();
 
         /* Compute velocity in window frame */
@@ -541,8 +577,8 @@ namespace MPC {
         //ACADO.x[0].ds = ACADO.x0.ds = 0;
 
         /* Set current angular velocity - this could also be set using the quaternion derivative. For now we just use the previously set value */
-        ACADO.x0.omega_ref_x = controlBodyAngularVelocity_[0];
-        ACADO.x0.omega_ref_y = controlBodyAngularVelocity_[1];
+        ACADO.x0.omega_ref_x = windowAngularVelocity_ref_[0];
+        ACADO.x0.omega_ref_y = windowAngularVelocity_ref_[1];
     }
 
     double MPC::getCurrentPathPosition() const
@@ -582,12 +618,12 @@ namespace MPC {
             ACADO.u[i].domega_ref_y = 0;
             ACADO.u[i].dds = 0;
             ACADO.u[i].velocity_slack = 0;
+            ACADO.u[i].angle_slack = 0;
             ACADO.u[i].proximity_slack = 0;
         }
 
-        controlBodyAngularVelocity_[0] = 0;
-        controlBodyAngularVelocity_[1] = 0;
-        controlBodyAngularVelocity_[2] = 0;
+        windowAngularVelocity_ref_[0] = 0;
+        windowAngularVelocity_ref_[1] = 0;
     }
 
     void MPC::shiftStates(void)
@@ -613,6 +649,7 @@ namespace MPC {
             ACADO.u[i].domega_ref_y = ACADO.u[i+1].domega_ref_y;
             ACADO.u[i].dds = ACADO.u[i+1].dds;
             ACADO.u[i].velocity_slack = ACADO.u[i+1].velocity_slack;
+            ACADO.u[i].angle_slack = ACADO.u[i+1].angle_slack;
             ACADO.u[i].proximity_slack = ACADO.u[i+1].proximity_slack;
         }
 
@@ -628,25 +665,38 @@ namespace MPC {
         ACADO.x[0].omega_ref_y = ACADO.x0.omega_ref_y;
     }
 
-
-    double MPC::getWindowAngularVelocityX(void) { return std::fmax(std::fmin(controlBodyAngularVelocity_[0], maxAngularVelocity_), -maxAngularVelocity_); }
-    double MPC::getWindowAngularVelocityY(void) { return std::fmax(std::fmin(controlBodyAngularVelocity_[1], maxAngularVelocity_), -maxAngularVelocity_); }
-    double MPC::getWindowAngularVelocityZ(void) { return std::fmax(std::fmin(controlBodyAngularVelocity_[2], maxAngularVelocity_), -maxAngularVelocity_); }
+    double MPC::getWindowAngularVelocityX(void) { return std::fmax(std::fmin(windowAngularVelocity_ref_[0], maxAngularVelocity_), -maxAngularVelocity_); }
+    double MPC::getWindowAngularVelocityY(void) { return std::fmax(std::fmin(windowAngularVelocity_ref_[1], maxAngularVelocity_), -maxAngularVelocity_); }
 
     Eigen::Vector2d MPC::getInertialAngularVelocity(void)
     {
         // convert MPC W_omega_ref to K_omega_ref   (from window frame, which the MPC is working within, to inertial frame)
-        Eigen::Vector2d H_omega_ref_2D;
-        H_omega_ref_2D << getWindowAngularVelocityX(), getWindowAngularVelocityY(); // omega_ref in heading frame
-        Eigen::Matrix2d R_window = Eigen::Rotation2Dd(WindowOrientation_).toRotationMatrix().transpose();
-        Eigen::Vector2d I_omega_ref_2D = R_window.transpose() * H_omega_ref_2D;
+        Eigen::Vector2d W_omega_ref_2D;
+        W_omega_ref_2D << getWindowAngularVelocityX(), getWindowAngularVelocityY(); // omega_ref in heading frame
+        Eigen::Matrix2d R_window = Eigen::Rotation2Dd(WindowOrientation_).toRotationMatrix().transpose(); // the transpose here is used to get R_window in the same form as everywhere else:   R_window = [cos(Y), sin(Y);  -sin(Y), cos(Y)]
+        Eigen::Vector2d I_omega_ref_2D = R_window.transpose() * W_omega_ref_2D;
         return I_omega_ref_2D;
+    }
+
+    Eigen::Vector3d MPC::getBodyAngularVelocity(double yawAngularVelocity)
+    {
+        Eigen::Vector3d I_omega_ref;
+        I_omega_ref << getInertialAngularVelocity(), yawAngularVelocity; // omega_ref in inertial frame
+
+        // omega_ref_B = devec * Phi(q)' * Gamma(q) * vec * omega_ref_I;
+        boost::math::quaternion<double> q_I_omega_ref(0, I_omega_ref(0), I_omega_ref(1), I_omega_ref(2));
+        boost::math::quaternion<double> q_B_omega_ref = conj(quaternion_) * q_I_omega_ref * quaternion_;
+
+        Eigen::Vector3d B_omega_ref;
+        B_omega_ref << q_B_omega_ref.R_component_2(), q_B_omega_ref.R_component_3(), q_B_omega_ref.R_component_4();
+
+        return B_omega_ref;
     }
 
     std::vector<std::pair<double,double>> MPC::getInertialAngularVelocityHorizon(void)
     {
         std::vector<std::pair<double,double>> angularVelocities;
-        Eigen::Matrix2d R_window = Eigen::Rotation2Dd(WindowOrientation_).toRotationMatrix().transpose();
+        Eigen::Matrix2d R_window = Eigen::Rotation2Dd(WindowOrientation_).toRotationMatrix().transpose(); // the transpose here is used to get R_window in the same form as everywhere else:   R_window = [cos(Y), sin(Y);  -sin(Y), cos(Y)]
 
         for (unsigned int i = (ACADO_N+1); i >= 1; i--) {
             Eigen::Vector2d H_omega_ref_2D(std::fmax(std::fmin(ACADO.x[i].omega_ref_x, maxAngularVelocity_), -maxAngularVelocity_),
@@ -712,15 +762,13 @@ namespace MPC {
         /* return outputs and prepare next iteration */
         //for ( int i = 0; i < ACADO_NU; i++ ) out_u0[i] = acadoVariables.u[i];
 
-        /*controlBodyAngularVelocity_[0] = ACADO.u[0].omega_ref_x;
-        controlBodyAngularVelocity_[1] = ACADO.u[0].omega_ref_y;
-        controlBodyAngularVelocity_[2] = 0;*/
+        /*windowAngularVelocity_ref_[0] = ACADO.u[0].omega_ref_x;
+        windowAngularVelocity_ref_[1] = ACADO.u[0].omega_ref_y;*/
 
         /* The MPC is controlling the angular acceleration, thus the current angular velocity output is taken as the state one step ahead
          * (gives the same as integrating the current domega_ref_x and domega_ref_y output from the MPC) */
-        controlBodyAngularVelocity_[0] = ACADO.x[1].omega_ref_x;
-        controlBodyAngularVelocity_[1] = ACADO.x[1].omega_ref_y;
-        controlBodyAngularVelocity_[2] = 0;
+        windowAngularVelocity_ref_[0] = ACADO.x[1].omega_ref_x;
+        windowAngularVelocity_ref_[1] = ACADO.x[1].omega_ref_y;
 
         if ((ACADO.x[ACADO_N].s + closestPositionOnCurrentPathToOrigin_) > windowPathLength_) {
             std::cout << "[WARN] MPC horizon is running outside of input path - Path length=" << windowPathLength_ << " vs s[N]=" << (ACADO.x[ACADO_N].s + closestPositionOnCurrentPathToOrigin_) << std::endl;
@@ -765,15 +813,19 @@ namespace MPC {
         /* Rotate quaternion into inertial frame - the MPC quaternion elements are in window frame */
         Eigen::Matrix2d R_window = Eigen::Rotation2Dd(WindowOrientation_).toRotationMatrix().transpose();
         Eigen::Vector2d q_tilt_inertial_q2q3 = R_window.transpose() * Eigen::Vector2d(ACADO.x[horizonIndex].q2, ACADO.x[horizonIndex].q3);
-        double q1 = sqrt(1 - q_tilt_inertial_q2q3[0]*q_tilt_inertial_q2q3[0] - q_tilt_inertial_q2q3[1]*q_tilt_inertial_q2q3[1]);
-        boost::math::quaternion<double> q_tilt_inertial(q1, q_tilt_inertial_q2q3[0], q_tilt_inertial_q2q3[1], 0);
 
         /* Compute heading quaternion */
         double RobotYaw = extractHeading(quaternion_);
         boost::math::quaternion<double> q_heading(cos(RobotYaw/2),0,0,sin(RobotYaw/2)); // w,x,y,z
 
+        /* Construct tilt quaternion in heading frame */
+        Eigen::Matrix2d R_heading = Eigen::Rotation2Dd(RobotYaw).toRotationMatrix().transpose();
+        Eigen::Vector2d q_tilt_heading_q2q3 = R_heading * q_tilt_inertial_q2q3;
+        double q1 = sqrt(1 - q_tilt_heading_q2q3[0]*q_tilt_heading_q2q3[0] - q_tilt_heading_q2q3[1]*q_tilt_heading_q2q3[1]);
+        boost::math::quaternion<double> q_tilt_heading(q1, q_tilt_heading_q2q3[0], q_tilt_heading_q2q3[1], 0);
+
         /* Construct resulting quaternion by combining the tilt and heading */
-        boost::math::quaternion<double> q = q_tilt_inertial * q_heading; // tilt defined in inertial frame
+        boost::math::quaternion<double> q = q_heading * q_tilt_heading;
         q /= norm(q); // this step can maybe be left out, since the quaternions being multiplied should already be unit quaternions
 
         /* Compute inertial frame position */
@@ -941,7 +993,7 @@ namespace MPC {
     }
 
 
-    void MPC::PlotObstacles(cv::Mat& image, cv::Scalar color, bool drawXup, double x_min, double y_min, double x_max, double y_max)
+    void MPC::PlotObstacles(cv::Mat& image, cv::Scalar obstacleColor, cv::Scalar consideredColor, bool drawXup, double x_min, double y_min, double x_max, double y_max)
     {
         double xres = image.cols;
         double yres = image.rows;
@@ -964,7 +1016,23 @@ namespace MPC {
                     center = cv::Point(x, yres - y);
 
                 //cv::drawMarker(image, point, color, cv::MARKER_STAR, 6, 2, 8);
-                cv::circle(image, center, scale_x*obstacle.radius, color, 1, 8);
+                cv::circle(image, center, scale_x*obstacle.radius, obstacleColor, 1, 8);
+            }
+        }
+
+        for (auto obstacle : consideredObstacles_) {
+            float x = (obstacle.x - x_min) * scale_x;
+            float y = (obstacle.y - y_min) * scale_y;
+
+            if (x >= 0 && x < xres && y >= 0 && y < yres) {
+                cv::Point center;
+                if (drawXup) // draw with robot x-axis pointing up in plot
+                    center = cv::Point(yres - y, xres - x);
+                else
+                    center = cv::Point(x, yres - y);
+
+                //cv::drawMarker(image, point, color, cv::MARKER_STAR, 6, 2, 8);
+                cv::circle(image, center, scale_x*obstacle.radius, consideredColor, 1, 8);
             }
         }
     }

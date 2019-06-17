@@ -15,7 +15,7 @@
  * e-mail   :  thomasj@tkjelectronics.dk
  * ------------------------------------------
  */
-
+ 
 #include "Trajectory.h"
 #include "Path.h"
 
@@ -445,7 +445,7 @@ namespace MPC
         cv::waitKey( 5 );
     }
 
-    Trajectory Trajectory::GenerateTestTrajectory(void)
+    Trajectory Trajectory::GenerateOvalTrajectory(Eigen::Vector2d offset)
     {
         Trajectory trajectory;
 
@@ -467,10 +467,32 @@ namespace MPC
             } else {
                 continue;
             }
+            p += offset;
             trajectory.AddPoint(p);
         }
 
         trajectory.rotate(deg2rad(90)); // Rotate trajectory 90 degree
+        trajectory.scale(1.0/10); //  downscale trajectory
+
+        return trajectory;
+    }
+
+
+    Trajectory Trajectory::GenerateCircleTrajectory(Eigen::Vector2d offset)
+    {
+        Trajectory trajectory;
+
+        double r = 20;
+
+        Eigen::Vector2d p;
+        for (unsigned int i = 0; i < 100; i++) {
+            //  circle with center in (0,0) and radius r
+            p = r * Eigen::Vector2d(cos(M_PI / 50 * double(i)),
+                                    sin(M_PI / 50 * double(i)));
+            p += offset;
+            trajectory.AddPoint(p);
+        }
+
         trajectory.scale(1.0/10); //  downscale trajectory
 
         return trajectory;
@@ -582,9 +604,9 @@ namespace MPC
             endIndex = points_.size()-1;
         }
 
+        continuousSequenceTrajectory.clear();
         if (endIndex < (points_.size()-1) || (endIndex == (points_.size()-1) && includesGoal())) {
             // Extract the continuous sequence trajectory
-            continuousSequenceTrajectory.clear();
             for (int i = startIndex; i <= endIndex; i++) {
                 continuousSequenceTrajectory.AddPoint(points_[i]);
             }
@@ -592,7 +614,6 @@ namespace MPC
         else { // endIndex equal to the last point but goal is not set, hence this is likely due to looping
             // Extract the continuous sequence trajectory from closest point to end item of trajectory
             endIndex = points_.size()-1;
-            continuousSequenceTrajectory.clear();
             for (int i = startIndex; i <= endIndex; i++) {
                 continuousSequenceTrajectory.AddPoint(points_[i]);
             }

@@ -266,13 +266,24 @@ Navigation goals can now be set using the regular method of setting navigation g
 <img alt="Transforms display MPC prediction" src="mpc_rviz2.png" width="49%" />
 </div>
 
+<font color="red">_Note that the MPC implementation with the local planner is currently broken after updating the MPC to the latest better-performing formulation (see [thesis](https://github.com/mindThomas/Kugle-MATLAB/blob/master/Kugle%20-%20Modelling%20and%20Control%20of%20a%20Ball-balancing%20Robot.pdf) for formulation)._</font>
+
+### MPC circle test
+A simplified MPC test node has been made to test and simulate the pure MPC functionality for control and path-following purposes. In the MPC test a static circle trajectory is used without any obstacles. Obstacles can however easily be added to the script.
+
+The MPC test can be launched with
+```bash
+roslaunch kugle_launch mpc_test.launch
+```
+
 # TF tree
 The TF tree showing the different frames and transforms published by the driver and simulation node (designed to be equal) is shown below.
 <div>
-[<img alt="kugle_driver TF tree" src="tf_driver-robot.png" width="49%" />](tf_driver-robot.png)
+<a href="tf_driver-robot.png"><img alt="kugle_driver TF tree" src="tf_driver-robot.png" width="49%" /></a>
 &nbsp;
-[<img alt="Gazebo simulation TF tree" src="tf_simulation.png" width="49%" />](tf_simulation.png)
+<a href="tf_simulation.png"><img alt="Gazebo simulation TF tree" src="tf_simulation.png" width="49%" /></a>
 </div>
+
 # Development-specific notes
 ## Soft restart
 The controller and estimators running inside the embedded firmware on the microprocessor can be restarted by running:

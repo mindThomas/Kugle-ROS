@@ -80,11 +80,14 @@ void KugleMPC::initialize(std::string name, tf::TransformListener * tf, costmap_
 	private_nh.param("mpc_frame", mpc_frame_, std::string("odom"));
 	private_nh.param("heading_frame", heading_frame_, std::string("heading"));
     private_nh.param("base_link_frame", base_link_frame_, std::string("base_link"));
+    private_nh.param("desired_velocity", desired_velocity_, double(1.0));
 
     private_nh.param("width", window_width_, double(4.0));
     private_nh.param("height", window_height_, double(4.0));
 
     sub_odom_ = nh.subscribe("odom", 1000, &KugleMPC::OdometryCallback, this);
+
+    mpc_.setDesiredVelocity(desired_velocity_);
 
     currentAttitude_.w = 1;
     currentAttitude_.x = 0;
@@ -153,9 +156,7 @@ bool KugleMPC::setPlan(const std::vector< geometry_msgs::PoseStamped > &plan){
 bool KugleMPC::computeVelocityCommands(geometry_msgs::Twist &cmd_vel) {
     // This function is called periodically with the "controller_frequency" rate set in "move_base_params.yaml"
 
-    //This is the meat-and-potatoes of the plugin, where velocities are actually generated.
-    //in this minimal case, simply specify constants; more generally, choose vx and omega_z
-    // intelligently based on the goal and the environment
+    // This is the meat-and-potatoes of the plugin, where velocities are actually generated.
     // When isGoalReached() is false, computeVelocityCommands will be called each iteration
     // of the controller--which is a settable parameter.  On each iteration, values in
     // cmd_vel should be computed and set, and these values will be published by move_base
@@ -259,14 +260,16 @@ void KugleMPC::MPC_Thread()
             if (mpc_.getCurrentTrajectory().includesGoal())
                 std::cout << "Trajectory includes goal" << std::endl;
 
-            if (distanceToGoal < 0.05 && fabs(robot_velocity_inertial[0]) < 0.01 && fabs(robot_velocity_inertial[1]) < 0.01)
+            if (distanceToGoal < 0.05 && fabs(robot_velocity_inertial[0]) < 0.01 && fabs(robot_velocity_inertial[1]) < 0.01) {
                 goal_reached_ = true;
+                enablePositionHold = true;
+            }
         } else {
             goal_reached_ = false;
         }
 
         //if (distanceToGoal > 0.5 && global_plan_.size() > 10 /* || !mpc_.getCurrentTrajectory().includesGoal()*/) {
-        if ((updateTrajectoryPrescaler % 2) == 0 && global_plan_.size() > 0) {
+        if (!enablePositionHold && (updateTrajectoryPrescaler % 2) == 0 && global_plan_.size() > 0) {
             mpc_.setTrajectory(global_plan_, robot_center, robot_velocity_inertial, attitude_quaternion);
         }
 
@@ -501,13 +504,6 @@ void KugleMPC::PublishAngularVelocityControl()
     std::cout << "   y = " << appliedAngularVelocityReference_[1] << std::endl;
     std::cout << std::endl;
 
-    //This is the meat-and-potatoes of the plugin, where velocities are actually generated.
-    //in this minimal case, simply specify constants; more generally, choose vx and omega_z
-    // intelligently based on the goal and the environment
-    // When isGoalReached() is false, computeVelocityCommands will be called each iteration
-    // of the controller--which is a settable parameter.  On each iteration, values in
-    // cmd_vel should be computed and set, and these values will be published by move_base
-    // to command robot motion
     cmd_vel.angular.x = appliedAngularVelocityReference_[0];
     cmd_vel.angular.y = appliedAngularVelocityReference_[1];
     cmd_vel.angular.z = 0;

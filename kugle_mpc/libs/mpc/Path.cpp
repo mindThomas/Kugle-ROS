@@ -716,8 +716,8 @@ namespace MPC
 
         if (tVec.size() <= order_t2s) { // we do not have sufficient points for fitting - therefore just do a path that corresponds to holding a static position (end point)
             s_end_ = 99;
-            poly_x_ = Polynomial({trajectory.back().point[0], 1000});
-            poly_y_ = Polynomial({trajectory.back().point[1], 1000});
+            poly_x_ = Polynomial({trajectory.back().point[0], 0.001});
+            poly_y_ = Polynomial({trajectory.back().point[1], 0.001});
             return;
         }
 

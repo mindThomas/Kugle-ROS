@@ -39,9 +39,9 @@
 namespace MPC
 {
 
-    class TrajectoryPoint
-    {
-        public:
+	class TrajectoryPoint
+	{
+		public:
             int seq; // sequence number
             Eigen::Vector2d point;
             bool goal; // is this point the goal/final point - hence the robot should stop here
@@ -58,24 +58,24 @@ namespace MPC
             {
                 return (seq < p.seq);
             }
-    };
+	};
 
-    class Trajectory
-    {
-        public:
+	class Trajectory
+	{
+		public:
             Trajectory();
             Trajectory(std::vector<TrajectoryPoint>& points);
             Trajectory(TrajectoryPoint points[], int num_points);
-            ~Trajectory();
+			~Trajectory();
 
             Trajectory& operator=(const Trajectory& other);
 
-            void AddPoint(TrajectoryPoint& point);
+			void AddPoint(TrajectoryPoint& point);
             void AddPoint(Eigen::Vector2d point, bool goal = false, double heading = -1, double velocity = -1);
-            void AddPoint(double x, double y, bool goal = false, double heading = -1, double velocity = -1);
+			void AddPoint(double x, double y, bool goal = false, double heading = -1, double velocity = -1);
             void AddPoint(int seq, double x, double y, bool goal = false, double heading = -1, double velocity = -1);
             void clear();
-            size_t size();
+			size_t size();
 
             void rotate(Trajectory& rotatedTrajectory, double angle);
             void rotate(double angle);
@@ -88,37 +88,38 @@ namespace MPC
             void SequenceExtract(Trajectory& extractedTrajectory, int seq_min, int seq_max = std::numeric_limits<int>::infinity());
             void DistanceExtract(Trajectory& extractedTrajectory, double distance_max, double distance_min = 0);
             void ApproxCurveLengthExtract(Trajectory& extractedTrajectory, double curve_length_max);
-            void WindowExtract(Trajectory& extractedTrajectory, Eigen::Vector2d center, double heading, double width, double height, Eigen::Vector2d offset = Eigen::Vector2d(0,0));
+			void WindowExtract(Trajectory& extractedTrajectory, Eigen::Vector2d center, double heading, double width, double height, Eigen::Vector2d offset = Eigen::Vector2d(0,0));
             void print();
             bool find(int seq, TrajectoryPoint& foundPoint);
-            bool find(int seq);
+			bool find(int seq);
             void sort();
             double distance();
             bool includesGoal();
             int GetLastSequenceID();
             std::vector<double> GetDistanceList();
-            std::vector<double> GetX();
-            std::vector<double> GetY();
+			std::vector<double> GetX();
+			std::vector<double> GetY();
             TrajectoryPoint get(unsigned int index);
             TrajectoryPoint back();
 
             void FixSequenceOrder(Trajectory& correctedTrajectory, int startSeqID, int endSeqID);
             void ExtractContinuousClosestSequence(Trajectory& continuousSequenceTrajectory, Eigen::Vector2d position = Eigen::Vector2d(0,0));
-            TrajectoryPoint FindClosestPoint(Eigen::Vector2d position);
+			TrajectoryPoint FindClosestPoint(Eigen::Vector2d position);
 
             void plot(bool drawXup = false, bool plotText = true, double x_min = -4, double y_min = -4, double x_max = 4, double y_max = 4);
             void plot(cv::Mat& image, cv::Scalar color, bool drawXup = false, bool plotText = true, double x_min = -4, double y_min = -4, double x_max = 4, double y_max = 4);
 
-        public:
-            static Trajectory GenerateTestTrajectory(void);
+		public:
+			static Trajectory GenerateOvalTrajectory(Eigen::Vector2d offset = Eigen::Vector2d(0,0));
+            static Trajectory GenerateCircleTrajectory(Eigen::Vector2d offset = Eigen::Vector2d(0,0));
 
-        private:
-            std::vector<TrajectoryPoint> points_;
-            int lastSeq_;
-            bool sorted_;
-    };
+		private:
+			std::vector<TrajectoryPoint> points_;
+			int lastSeq_;
+			bool sorted_;
+	};
 
 }
-    
-    
+	
+	
 #endif

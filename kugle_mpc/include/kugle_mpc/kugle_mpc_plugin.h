@@ -81,6 +81,7 @@ class KugleMPC : public nav_core::BaseLocalPlanner {
         std::timed_mutex mpc_processing_mutex_;
         std::condition_variable mpc_signalling_cv;
 
+		double desired_velocity_;
 		std::vector<std::pair<double,double>> angularVelocityOutputs_;
         std::mutex angularVelocityOutputs_mutex_;
         Eigen::Vector2d appliedAngularVelocityReference_;

@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<launch>
+
+	<!-- Launch the MPC test node -->
+	<include file="$(find kugle_mpc)/launch/mpc_test.launch">
+		<arg name="rate" value="10.0" />
+		<arg name="map_frame" value="map" />
+		<arg name="base_link_frame" value="base_link" />
+		<arg name="use_localization" value="true" />
+		<arg name="desired_velocity" value="1.0" />
+	</include>
+
+</launch>

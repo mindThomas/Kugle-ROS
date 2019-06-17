@@ -59,6 +59,7 @@
   <build_depend>eigen</build_depend>
   <build_depend>nav_core</build_depend>
   <build_depend>nav_msgs</build_depend>
+  <build_depend>kugle_msgs</build_depend>
   <build_depend>pluginlib</build_depend>
   <build_depend>tf</build_depend>
 
@@ -68,6 +69,7 @@
   <exec_depend>eigen</exec_depend>
   <exec_depend>nav_core</exec_depend>
   <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>kugle_msgs</exec_depend>
   <exec_depend>pluginlib</exec_depend>
   <exec_depend>tf</exec_depend>
 

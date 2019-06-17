@@ -3,6 +3,8 @@ project(kugle_mpc)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 add_compile_options(-std=c++11)
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -11,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   nav_core
   nav_msgs
+  kugle_msgs
   base_local_planner
   pluginlib
   tf
@@ -117,7 +120,7 @@ add_subdirectory(libs/mpc)
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES kugle_mpc_plugin
-  CATKIN_DEPENDS nav_core pluginlib roscpp nav_msgs
+  CATKIN_DEPENDS nav_core base_local_planner pluginlib roscpp nav_msgs kugle_msgs
 )
 
 ###########
@@ -168,6 +171,11 @@ add_library(kugle_mpc_plugin src/kugle_mpc_plugin.cpp)
 add_dependencies(kugle_mpc_plugin ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} mpc) #  global_planner
 target_link_libraries(kugle_mpc_plugin ${catkin_LIBRARIES} mpc) # global_planner
 
+add_executable (mpc_test_node src/mpc_test_node.cpp)
+add_dependencies(mpc_test_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} mpc)
+target_link_libraries(mpc_test_node ${catkin_LIBRARIES} mpc)
+
+
 #############
 ## Install ##
 #############
@@ -204,7 +212,7 @@ target_link_libraries(kugle_mpc_plugin ${catkin_LIBRARIES} mpc) # global_planner
 # )
 
 install(
-    TARGETS kugle_mpc_plugin
+    TARGETS kugle_mpc_plugin mpc_test_node
     DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
     LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 )
