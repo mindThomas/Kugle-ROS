@@ -244,6 +244,12 @@ If you experience an error during the launch of the simulation, then retry by st
 
 In the default RVIZ view opened after starting the simulation the Kugle robot will show up "white" because the `Fixed Frame` is set to `map` and the localization node has not be started. After running the `localization.launch` (see above) the Kugle robot should show up properly. Another option is to set the `Fixed Frame` to `world`.
 
+## Reset simulation
+The Gazebo simulation/world can be reset without having to restart Gazebo by calling:
+```bash
+rosservice call /gazebo/reset_world
+```
+
 ## MPC simulation
 A model predictive controller, derived using ACADO, has been implemented as a local planner for the Kugle robot. To run the MPC on the simulated Kugle robot the [Balance controller simulation](#simulation) has to be used and the [`localization`](#localization-node) node should be running (see above).
 
@@ -260,6 +266,13 @@ Navigation goals can now be set using the regular method of setting navigation g
 <img alt="Transforms display MPC prediction" src="mpc_rviz2.png" width="49%" />
 </div>
 
+# TF tree
+The TF tree showing the different frames and transforms published by the driver and simulation node (designed to be equal) is shown below.
+<div>
+[<img alt="kugle_driver TF tree" src="tf_driver-robot.png" width="49%" />](tf_driver-robot.png)
+&nbsp;
+[<img alt="Gazebo simulation TF tree" src="tf_simulation.png" width="49%" />](tf_simulation.png)
+</div>
 # Development-specific notes
 ## Soft restart
 The controller and estimators running inside the embedded firmware on the microprocessor can be restarted by running:
