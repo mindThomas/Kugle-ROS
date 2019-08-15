@@ -348,7 +348,7 @@ void KugleMPC::MPC_Thread()
 
         cv::Mat imgPredicted = cv::Mat(500, 500, CV_8UC3, cv::Scalar(255, 255, 255));
         mpc_.getCurrentTrajectory().plot(imgPredicted, cv::Scalar(0, 0, 255), true, false, -4, -4, 4, 4);
-        mpc_.PlotPredictedTrajectory(imgPredicted, -4, -4, 4, 4);
+        mpc_.PlotPredictedTrajectoryInWindow(imgPredicted, -4, -4, 4, 4);
         mpc_.getCurrentPath().plot(imgPredicted, cv::Scalar(0, 255, 0), true, -4, -4, 4, 4);
         //mpc_.PlotObstaclesInWindow(imgPredicted, cv::Scalar(255, 0, 0), true, -4, -4, 4, 4);
         mpc_.PlotRobotInWindow(imgPredicted, cv::Scalar(255, 0, 0), true, -4, -4, 4, 4);

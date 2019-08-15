@@ -118,7 +118,7 @@ namespace MPC
         sorted_ = false;
     }
 
-    size_t Trajectory::size()
+    size_t Trajectory::size() const
     {
         return points_.size();
     }
@@ -304,7 +304,7 @@ namespace MPC
         return distance;
     }
 
-    int Trajectory::GetLastSequenceID()
+    int Trajectory::GetLastSequenceID() const
     {
         return lastSeq_;
     }
@@ -328,7 +328,7 @@ namespace MPC
         return distanceList;
     }
 
-    std::vector<double> Trajectory::GetX()
+    std::vector<double> Trajectory::GetX() const
     {
         std::vector<double> xValues;
         for (auto &p : points_) {
@@ -337,7 +337,7 @@ namespace MPC
         return xValues;
     }
 
-    std::vector<double> Trajectory::GetY()
+    std::vector<double> Trajectory::GetY() const
     {
         std::vector<double> yValues;
         for (auto &p : points_) {
@@ -346,14 +346,14 @@ namespace MPC
         return yValues;
     }
 
-    TrajectoryPoint Trajectory::get(unsigned int index)
+    TrajectoryPoint Trajectory::get(unsigned int index) const
     {
         TrajectoryPoint emptyPoint;
         if (index < 0 || index >= points_.size()) return emptyPoint;
-        return points_.at(index);
+        return points_[index];
     }
 
-    TrajectoryPoint Trajectory::back()
+    TrajectoryPoint Trajectory::back() const
     {
         return points_.back();
     }

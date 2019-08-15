@@ -35,6 +35,7 @@
 #include <geometry_msgs/Quaternion.h>
 #include <geometry_msgs/Twist.h>
 #include <nav_msgs/Odometry.h>
+#include <nav_msgs/Path.h>
 #include <kugle_msgs/StateEstimate.h>
 #include <std_srvs/Empty.h>
 
@@ -52,6 +53,8 @@ void Quaternion_quat2eul_zyx(boost::math::quaternion<double> q, float yaw_pitch_
 void OdometryCallback(const nav_msgs::Odometry::ConstPtr& msg);
 void StateEstimateCallback(const kugle_msgs::StateEstimate::ConstPtr& msg);
 void GetLocalizationBasedPositionEstimate(tf::TransformListener * tfListener, std::string map_frame, std::string base_link_frame);
+void PublishTrajectory(const MPC::Trajectory &trajectory, ros::Publisher &pub, std::string mapFrame);
+void PublishPredictedHorizon(MPC::MPC &mpc, ros::Publisher &pub, std::string mapFrame);
 void GazeboReset(ros::NodeHandle &n);
 void GazeboPause(ros::NodeHandle &n);
 void GazeboResume(ros::NodeHandle &n);
@@ -98,6 +101,8 @@ int main(int argc, char **argv) {
 
     ros::Rate loop_rate(rate); // Loop rate
     ros::Publisher pub_cmd_vel_angular_inertial = n.advertise<geometry_msgs::Twist>("cmd_vel_inertial", 1000);
+    ros::Publisher pub_trajectory = n.advertise<nav_msgs::Path>("/KugleMPC/global_plan", 1000); // publish under KugleMPC to make consistent with kugle_mpc_plugin
+    ros::Publisher pub_horizon = n.advertise<nav_msgs::Path>("/KugleMPC/local_plan", 1000);
     ros::Subscriber sub_odom = n.subscribe("odom", 1000, &OdometryCallback);
     ros::Subscriber sub_stateestimate = n.subscribe("StateEstimate", 1000, &StateEstimateCallback);
     tf::TransformListener tfListener;
@@ -178,11 +183,13 @@ int main(int argc, char **argv) {
 		mpc.setTrajectory(trajectory, RobotPos, RobotVelocity, RobotQuaternion);
 		mpc.setCurrentState(RobotPos, RobotVelocity, RobotQuaternion);
 
+		PublishTrajectory(trajectory, pub_trajectory, map_frame);
+
 		cv::Mat imgTrajectory = cv::Mat( 500, 1333, CV_8UC3, cv::Scalar( 255, 255, 255 ) );
 		trajectory.plot(imgTrajectory, cv::Scalar(0, 0, 255), false, false, -8, -3, 8, 3);
 		mpc.PlotRobot(imgTrajectory, cv::Scalar(255, 0, 0), false, -8, -3, 8, 3);
 		mpc.PlotObstacles(imgTrajectory, cv::Scalar(255, 0, 0), cv::Scalar(0, 255, 0), false, -8, -3, 8, 3);
-		cv::imshow("Trajectory", imgTrajectory);
+		//cv::imshow("Trajectory", imgTrajectory);
 
 		cv::Mat imgWindowTrajectory = cv::Mat( 500, 500, CV_8UC3, cv::Scalar( 255, 255, 255 ) );
 		mpc.getCurrentTrajectory().plot(imgWindowTrajectory, cv::Scalar(0, 255, 0), true, false, -4, -4, 4, 4);
@@ -207,6 +214,8 @@ int main(int argc, char **argv) {
             GazeboResume(n);
 		}
 
+        PublishPredictedHorizon(mpc, pub_horizon, map_frame);
+
 		state = mpc.getHorizonState();
 		std::cout << "Predicted states:" << std::endl;
 		std::cout << "path distance = " << state.pathDistance << std::endl;
@@ -221,10 +230,13 @@ int main(int argc, char **argv) {
 		std::cout << "   y = " << angularVelocityReference[1] << std::endl;
 
 		cv::Mat imgPredicted = cv::Mat( 500, 500, CV_8UC3, cv::Scalar( 255, 255, 255 ) );
-		mpc.PlotPredictedTrajectory(imgPredicted, -4, -4, 4, 4);
+		mpc.PlotPredictedTrajectoryInWindow(imgPredicted, -4, -4, 4, 4);
 		mpc.PlotObstaclesInWindow(imgPredicted, cv::Scalar(255, 0, 0), true, -4, -4, 4, 4);
 		mpc.PlotRobotInWindow(imgPredicted, cv::Scalar(255, 0, 0), true, -4, -4, 4, 4);
 		cv::imshow("Predicted", imgPredicted);
+
+        mpc.PlotPredictedTrajectory(imgTrajectory, -8, -3, 8, 3);
+        cv::imshow("Trajectory", imgTrajectory);
 
         cmd_vel.angular.x = angularVelocityReference[0];
         cmd_vel.angular.y = angularVelocityReference[1];
@@ -272,6 +284,60 @@ void GetLocalizationBasedPositionEstimate(tf::TransformListener * tfListener, st
     catch (tf::TransformException &ex) {
         ROS_WARN("%s", ex.what());
     }
+}
+
+void PublishTrajectory(const MPC::Trajectory &trajectory, ros::Publisher &pub, std::string mapFrame)
+{
+    nav_msgs::Path planMsg;
+    planMsg.header.stamp = ros::Time::now();
+    planMsg.header.frame_id = mapFrame;
+
+    // Populate vector of trajectory poses
+    geometry_msgs::PoseStamped pose;
+    pose.header.stamp = planMsg.header.stamp;
+    pose.header.frame_id = planMsg.header.frame_id;
+    pose.pose.orientation.w = 1.0; // set unit quaternion (upright) for reference poses
+    pose.pose.orientation.x = 0.0;
+    pose.pose.orientation.y = 0.0;
+    pose.pose.orientation.z = 0.0;
+    pose.pose.position.z = 0;
+    for (unsigned int i = 0; i < trajectory.size(); i++) {
+        auto point = trajectory.get(i);
+        pose.header.seq = i;
+        pose.pose.position.x = point.point[0];
+        pose.pose.position.y = point.point[1];
+        planMsg.poses.push_back(pose);
+    }
+
+    // Publish path message included the trajectory poses
+    pub.publish(planMsg);
+}
+
+void PublishPredictedHorizon(MPC::MPC &mpc, ros::Publisher &pub, std::string mapFrame)
+{
+    nav_msgs::Path planMsg;
+    planMsg.header.stamp = ros::Time::now();
+    planMsg.header.frame_id = mapFrame;
+
+    for (unsigned int i = 0; i < MPC::MPC::HorizonLength; i++) {
+        auto state = mpc.getHorizonState(i);
+
+        geometry_msgs::PoseStamped pose;
+        pose.header.seq = i;
+        pose.header.stamp = planMsg.header.stamp;
+        pose.header.frame_id = planMsg.header.frame_id;
+        pose.pose.position.x = state.position[0];
+        pose.pose.position.y = state.position[1];
+        pose.pose.position.z = 0;
+        pose.pose.orientation.w = state.quaternion.R_component_1();
+        pose.pose.orientation.x = state.quaternion.R_component_2();
+        pose.pose.orientation.y = state.quaternion.R_component_3();
+        pose.pose.orientation.z = state.quaternion.R_component_4();
+
+        planMsg.poses.push_back(pose);
+    }
+
+    pub.publish(planMsg);
 }
 
 void GazeboReset(ros::NodeHandle &n)

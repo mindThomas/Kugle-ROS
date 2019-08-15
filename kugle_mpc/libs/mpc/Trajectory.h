@@ -75,7 +75,7 @@ namespace MPC
 			void AddPoint(double x, double y, bool goal = false, double heading = -1, double velocity = -1);
             void AddPoint(int seq, double x, double y, bool goal = false, double heading = -1, double velocity = -1);
             void clear();
-			size_t size();
+			size_t size() const;
 
             void rotate(Trajectory& rotatedTrajectory, double angle);
             void rotate(double angle);
@@ -95,12 +95,12 @@ namespace MPC
             void sort();
             double distance();
             bool includesGoal();
-            int GetLastSequenceID();
+            int GetLastSequenceID() const;
             std::vector<double> GetDistanceList();
-			std::vector<double> GetX();
-			std::vector<double> GetY();
-            TrajectoryPoint get(unsigned int index);
-            TrajectoryPoint back();
+			std::vector<double> GetX() const;
+			std::vector<double> GetY() const;
+            TrajectoryPoint get(unsigned int index) const;
+            TrajectoryPoint back() const;
 
             void FixSequenceOrder(Trajectory& correctedTrajectory, int startSeqID, int endSeqID);
             void ExtractContinuousClosestSequence(Trajectory& continuousSequenceTrajectory, Eigen::Vector2d position = Eigen::Vector2d(0,0));

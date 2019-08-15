@@ -784,9 +784,22 @@ namespace MPC {
     {
         Trajectory predictedTrajectory;
         for (unsigned int i = 0; i < (ACADO_N+1); i++) {
+            auto state = getHorizonState(i);
+            double velocity = sqrt(state.velocity(0)*state.velocity(0) + state.velocity(1)*state.velocity(1));
+            double RobotYaw = extractHeading(state.quaternion);
+            predictedTrajectory.AddPoint(state.position, false, RobotYaw, velocity);
+        }
+        // Note that this predicted trajectory is in inertial frame
+        predictedTrajectory.plot(image, cv::Scalar(255, 0, 0), false, false, x_min, y_min, x_max, y_max);
+    }
+
+    void MPC::PlotPredictedTrajectoryInWindow(cv::Mat& image, double x_min, double y_min, double x_max, double y_max)
+    {
+        Trajectory predictedTrajectory;
+        for (unsigned int i = 0; i < (ACADO_N+1); i++) {
             double velocity = sqrt(ACADO.x[i].dx*ACADO.x[i].dx + ACADO.x[i].dy*ACADO.x[i].dy);
             //double velocity = ACADO.x[i].ds;
-            predictedTrajectory.AddPoint(ACADO.x[i].x, ACADO.x[i].y, 0, velocity);
+            predictedTrajectory.AddPoint(ACADO.x[i].x, ACADO.x[i].y, false, 0, velocity);
         }
         // Note that this predicted trajectory is in window frame
         predictedTrajectory.plot(image, cv::Scalar(255, 0, 0), true, true, x_min, y_min, x_max, y_max);

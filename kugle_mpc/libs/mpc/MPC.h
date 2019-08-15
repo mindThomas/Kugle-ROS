@@ -155,7 +155,8 @@ class MPC
         void setTrajectory(Trajectory& trajectory, const Eigen::Vector2d& position, const Eigen::Vector2d& velocity, const boost::math::quaternion<double>& q);
         void ExtractWindowTrajectory(Trajectory& trajectory, Trajectory& extractedWindowTrajectory, const Eigen::Vector2d& position, const Eigen::Vector2d& velocity, const boost::math::quaternion<double>& q, double ExtractionDistance = 0, bool DoWindowFilteringBeforeExtractionDistance = false, orientation_selection_t OrientationSelection = INERTIAL_FRAME);
 
-        void PlotPredictedTrajectory(cv::Mat& image, double x_min, double y_min, double x_max, double y_max);
+		void PlotPredictedTrajectory(cv::Mat& image, double x_min, double y_min, double x_max, double y_max);
+        void PlotPredictedTrajectoryInWindow(cv::Mat& image, double x_min, double y_min, double x_max, double y_max);
         void PlotRobot(cv::Mat& image, cv::Scalar color, bool drawXup, double x_min, double y_min, double x_max, double y_max);
         void PlotRobotInWindow(cv::Mat& image, cv::Scalar color, bool drawXup, double x_min, double y_min, double x_max, double y_max);
         void PlotObstacles(cv::Mat& image, cv::Scalar obstacleColor, cv::Scalar consideredColor, bool drawXup, double x_min, double y_min, double x_max, double y_max);
