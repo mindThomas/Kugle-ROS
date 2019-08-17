@@ -158,7 +158,7 @@ roslaunch kugle_driver kugle_driver.launch
 ```
 
 # Usage
-## Connecting to onboard computer ROS
+## Connecting to the ROS Master on the onboard computer
 The onboard computer automatically launches the minimal bringup launch file at boot and creates a WiFi hotspot named 'kugle'. Connecting to this hotspot gives access to the ROS Master created by the robot. To link a user computer to the ROS Master source the `ConnectROS.sh` script:
 ```bash
 source ConnectROS.sh
@@ -284,6 +284,22 @@ The TF tree showing the different frames and transforms published by the driver 
 <a href="tf_simulation.png"><img alt="Gazebo simulation TF tree" src="tf_simulation.png" width="49%" /></a>
 </div>
 
+# Logging with ROS
+## Recording a log
+To record a log execute the following command preferably on the onboard computer running the drivers to limit latency:
+```bash
+rosbag record -a
+```
+
+## Example logs (rosbags)
+A ROS bag of a log captured while manually driving the Kugle V1 prototype using the Velocity LQR controller and a PS4 joystick can be downloaded from: https://www.dropbox.com/s/8ywmpacohq0nky7/kugle-v1_frb7_log.bag
+The corresponding raw measurements logged from the embedded firmware which can be parsed with MATLAB please see can be downloaded from: [`Kugle-MATLAB/DataProcessing`](https://github.com/mindThomas/Kugle-MATLAB/tree/master/DataProcessing).
+
+Play the log by executing:
+```bash
+ roslaunch kugle_launch rosbag.launch bag:="${PWD}/kugle-v2_frb7_log.bag"
+```
+
 # Development-specific notes
 ## Soft restart
 The controller and estimators running inside the embedded firmware on the microprocessor can be restarted by running:
@@ -313,7 +329,7 @@ rosservice call /kugle/enter_bootloader
 ```
 The firmware can now be updated using the functions described in https://github.com/mindThomas/Kugle-Embedded#dfu-bootloader-over-usb
 
-## Debugging and logging
+## Debugging and logging the embedded firmware
 The ROS driver in combination with the embedded firmware from [Kugle-Embedded](https://github.com/mindThomas/Kugle-Embedded) includes two ways of debugging.
 
 ### `printf` support
