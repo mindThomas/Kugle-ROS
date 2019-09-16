@@ -175,7 +175,7 @@ class MPC
 		double getSolveTime() const;
         double getCurrentPathPosition() const;
         status_t getStatus() const;
-
+	double SolverCostValue_;
     private:
         void resetACADO();
         void resetStates(void);
@@ -217,7 +217,6 @@ class MPC
 		/* Solver status and outputs */
 		status_t SolverStatus_;
 		double SolverKKT_;
-		double SolverCostValue_;
 		int SolverIterations_;
 		double SolveTime_;
     };

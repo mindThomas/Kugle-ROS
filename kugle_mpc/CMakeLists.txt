@@ -175,6 +175,9 @@ add_executable (mpc_test_node src/mpc_test_node.cpp)
 add_dependencies(mpc_test_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} mpc)
 target_link_libraries(mpc_test_node ${catkin_LIBRARIES} mpc)
 
+add_executable (mpc_imp_node src/mpc_imp_node.cpp)
+add_dependencies(mpc_imp_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} mpc)
+target_link_libraries(mpc_imp_node ${catkin_LIBRARIES} mpc)
 
 #############
 ## Install ##

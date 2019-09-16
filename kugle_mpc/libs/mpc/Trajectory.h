@@ -111,7 +111,7 @@ namespace MPC
 
 		public:
 			static Trajectory GenerateOvalTrajectory(Eigen::Vector2d offset = Eigen::Vector2d(0,0));
-            static Trajectory GenerateCircleTrajectory(Eigen::Vector2d offset = Eigen::Vector2d(0,0));
+             static Trajectory GenerateCircleTrajectory(Eigen::Vector2d offset = Eigen::Vector2d(0,0), double r=0.0);
 
 		private:
 			std::vector<TrajectoryPoint> points_;

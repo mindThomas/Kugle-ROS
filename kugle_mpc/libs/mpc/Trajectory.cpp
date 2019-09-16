@@ -478,22 +478,24 @@ namespace MPC
     }
 
 
-    Trajectory Trajectory::GenerateCircleTrajectory(Eigen::Vector2d offset)
+ Trajectory Trajectory::GenerateCircleTrajectory(Eigen::Vector2d offset, double r)
     {
         Trajectory trajectory;
-
-        double r = 20;
-
+ 
         Eigen::Vector2d p;
+	offset(0)=offset(0)-r;
+        // offset_internal = offset; 
         for (unsigned int i = 0; i < 100; i++) {
             //  circle with center in (0,0) and radius r
+            //p = r * Eigen::Vector2d(cos(M_PI / 50 * double(i)),
+            //                        sin(M_PI / 50 * double(i)));
             p = r * Eigen::Vector2d(cos(M_PI / 50 * double(i)),
                                     sin(M_PI / 50 * double(i)));
             p += offset;
             trajectory.AddPoint(p);
         }
 
-        trajectory.scale(1.0/10); //  downscale trajectory
+        //trajectory.scale(1.0/10); //  downscale trajectory
 
         return trajectory;
     }

@@ -38,16 +38,16 @@ namespace MPC {
 
     ACADO_t& MPC::ACADO = *((ACADO_t *)&acadoVariables);
 
-    const double MPC::WPathFollow = 9999;  // weight on longitudinal tracking error - should be high to achieve accurate path following
-    const double MPC::WLateral = 25;  // weight on lateral tracking error
-    const double MPC::WVelocity = 80;  // weight on error between desired velocity and actual longitudinal velocity
-    const double MPC::WProgress = 0;  // punishment of being far away from the end of the fitted path
-    const double MPC::WSmoothness = 100;  // punishment of changes in angular velocity reference (hence weight on d_omega_ref)
-    const double MPC::WOmega = 20;  // weight on angular velocity reference (omega_ref)
-    const double MPC::WAngle = 10;  // weight on angle reference
-    const double MPC::WObstacles = 20;  // weight on the exponential obstacle proximity, defined by an offset and scale value
-    const double MPC::ProximityOffset = 0.3;  // exponential obstacle offset
-    const double MPC::ProximityScale = 10;  // exponential obstacle scale
+    const double MPC::WPathFollow =20000;  // weight on longitudinal tracking error - should be high to achieve accurate path following
+    const double MPC::WLateral = 75;  // weight on lateral tracking error
+    const double MPC::WVelocity =600;  // weight on error between desired velocity and actual longitudinal velocity
+    const double MPC::WProgress =0; //1;  // punishment of being far away from the end of the fitted path
+    const double MPC::WSmoothness = 20;  // punishment of changes in angular velocity reference (hence weight on d_omega_ref)
+    const double MPC::WOmega = 10;  // weight on angular velocity reference (omega_ref)
+    const double MPC::WAngle = 20;  // weight on angle reference
+    const double MPC::WObstacles = 10; //70;  // weight on the exponential obstacle proximity, defined by an offset and scale value
+    const double MPC::ProximityOffset = 0.15;  // exponential obstacle offset
+    const double MPC::ProximityScale = 8;  // exponential obstacle scale
 
     // Horizon weight matrix (cost)
     const double MPC::Wdiag[ACADO_NY] = {MPC::WPathFollow, MPC::WLateral,  MPC::WAngle,MPC::WAngle,  MPC::WOmega,MPC::WOmega,  MPC::WVelocity,MPC::WProgress,  MPC::WSmoothness,MPC::WSmoothness,  MPC::WObstacles,  99999.0,9999.0,9999.0}; // { lag_error; lateral_deviation;  q2;q3;  omega_ref_x;omega_ref_y;  velocity_error; away_from_end_error;   domega_ref_x;domega_ref_y;   obstacle_proximity;   velocity_slack;angle_slack;proximity_slack }
@@ -81,9 +81,9 @@ namespace MPC {
         setWeights(Wdiag_.asDiagonal().toDenseMatrix(), WNdiag_.asDiagonal().toDenseMatrix());
 
         // Set internal to default values
-        setVelocityBounds(0.0, 10.0);
-        setDesiredVelocity(1.0);
-        setControlLimits(deg2rad(10), deg2rad(15), deg2rad(30));
+        setVelocityBounds(0.0, 3.0);
+        setDesiredVelocity(0.25);
+        setControlLimits(deg2rad(7), deg2rad(10), deg2rad(7));
         setObstacleProximityParameters(ProximityOffset, ProximityScale);
         setReferences();
 
