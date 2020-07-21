@@ -64,11 +64,11 @@ KugleMPC::~KugleMPC() {
 }
 
 //put inits here:
-void KugleMPC::initialize(std::string name, tf::TransformListener * tf, costmap_2d::Costmap2DROS * costmap_ros){
+void KugleMPC::initialize(std::string name, tf2_ros::Buffer * tf, costmap_2d::Costmap2DROS * costmap_ros){
 	ros::NodeHandle nh(name);
     ros::NodeHandle private_nh("~/" + name);
 
-	tfListener_ = tf;
+	tfBuffer_ = tf;
 	costmap_ = costmap_ros;
 	global_plan_changed_ = false;
 
@@ -187,16 +187,16 @@ void KugleMPC::MPC_Thread()
         ros::Time currentTime = ros::Time::now();
 
         // Look-up current estimate of robot in map
-        tf::StampedTransform tf_base_link;
+        geometry_msgs::TransformStamped tf_base_link;
         try {
-            tfListener_->lookupTransform(map_frame_, base_link_frame_, ros::Time(0), tf_base_link);
+            tf_base_link = tfBuffer_->lookupTransform(map_frame_, base_link_frame_, ros::Time(0));
         }
         catch (tf::TransformException &ex) {
             ROS_WARN("%s", ex.what());
         }
 
         ROS_INFO_STREAM("Difference in time between TF time and current time: "
-                                << ros::Duration(currentTime - tf_base_link.stamp_).toSec() * 1000 << " ms");
+                                << ros::Duration(currentTime - tf_base_link.header.stamp).toSec() * 1000 << " ms");
         ROS_INFO_STREAM("Difference in time between ODOM time and current time: "
                                 << ros::Duration(currentTime - odomTime_).toSec() * 1000 << " ms");
         ROS_INFO_STREAM(
@@ -209,8 +209,11 @@ void KugleMPC::MPC_Thread()
         prevTime_ = currentTime;
 
         /* Assemble state variables to be fed into MPC */
-        Eigen::Vector2d robot_center(tf_base_link.getOrigin().x(), tf_base_link.getOrigin().y());
-        tf::Quaternion robot_quaternion = tf_base_link.getRotation();
+        Eigen::Vector2d robot_center(tf_base_link.transform.translation.x, tf_base_link.transform.translation.y);
+        tf::Quaternion robot_quaternion(tf_base_link.transform.rotation.x,
+                                        tf_base_link.transform.rotation.y,
+                                        tf_base_link.transform.rotation.z,
+                                        tf_base_link.transform.rotation.w);
         tfScalar yaw, pitch, roll;
         tf::Matrix3x3 mat(robot_quaternion);
         mat.getEulerYPR(yaw, pitch, roll);

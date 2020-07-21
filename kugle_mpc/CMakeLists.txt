@@ -27,7 +27,7 @@ find_package(Boost REQUIRED COMPONENTS system signals python thread program_opti
 mark_as_advanced(BOOST_THREAD_LIBRARY)
 link_directories(... ${Boost_LIBRARY_DIRS})
 
-find_package(OpenCV 3.3.1 REQUIRED core imgproc highgui) # contrib
+find_package(OpenCV 3.2 REQUIRED core imgproc highgui) # contrib
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed

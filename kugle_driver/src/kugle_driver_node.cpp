@@ -24,6 +24,7 @@
 #include <string>
 #include <thread>
 #include <boost/thread/recursive_mutex.hpp>
+#include <boost/format.hpp>
 #include <future>
 #include <boost/bind.hpp>
 #include <fstream>      // for file output (std::ofstream)

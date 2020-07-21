@@ -236,6 +236,12 @@ target_link_libraries(joystick_mapper_node ${catkin_LIBRARIES})
 # )
 
 install(
+  PROGRAMS
+        scripts/teleop_key
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+install(
     TARGETS 
 	FirstOrderLPF Quaternion MathLib
 	QuaternionVelocityControl
