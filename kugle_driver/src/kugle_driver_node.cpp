@@ -264,6 +264,7 @@ std::string ParseControllerType(lspc::ParameterTypes::controllerType_t type)
 {
     if (type == lspc::ParameterTypes::LQR_CONTROLLER) return "LQR_CONTROLLER";
     else if (type == lspc::ParameterTypes::SLIDING_MODE_CONTROLLER) return "SLIDING_MODE_CONTROLLER";
+    else if (type == lspc::ParameterTypes::FEEDBACK_LINEARIZATION_CONTROLLER) return "FEEDBACK_LINEARIZATION_CONTROLLER")
     else return "UNKNOWN_CONTROLLER";
 }
 
@@ -271,6 +272,7 @@ lspc::ParameterTypes::controllerType_t ParseControllerType2(std::string type)
 {
     if (!type.compare("LQR_CONTROLLER")) return lspc::ParameterTypes::LQR_CONTROLLER;
     else if (!type.compare("SLIDING_MODE_CONTROLLER")) return lspc::ParameterTypes::SLIDING_MODE_CONTROLLER;
+    else if (!type.compare("FEEDBACK_LINEARIZATION_CONTROLLER")) return lspc::ParameterTypes::FEEDBACK_LINEARIZATION_CONTROLLER;
     else return lspc::ParameterTypes::UNKNOWN_CONTROLLER;
 }
 
