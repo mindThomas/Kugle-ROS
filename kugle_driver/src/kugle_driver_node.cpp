@@ -264,7 +264,7 @@ std::string ParseControllerType(lspc::ParameterTypes::controllerType_t type)
 {
     if (type == lspc::ParameterTypes::LQR_CONTROLLER) return "LQR_CONTROLLER";
     else if (type == lspc::ParameterTypes::SLIDING_MODE_CONTROLLER) return "SLIDING_MODE_CONTROLLER";
-    else if (type == lspc::ParameterTypes::FEEDBACK_LINEARIZATION_CONTROLLER) return "FEEDBACK_LINEARIZATION_CONTROLLER")
+    else if (type == lspc::ParameterTypes::FEEDBACK_LINEARIZATION_CONTROLLER) return "FEEDBACK_LINEARIZATION_CONTROLLER";
     else return "UNKNOWN_CONTROLLER";
 }
 
@@ -849,6 +849,34 @@ bool ParseParamTypeAndID(const std::string in_type, const std::string in_param, 
         }
         else if (!in_param.compare("Kz")) {
             out_param = lspc::ParameterLookup::Kz;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+	else if (!in_param.compare("Kf")) {
+            out_param = lspc::ParameterLookup::Kf;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+	else if (!in_param.compare("Kfp_x")) {
+            out_param = lspc::ParameterLookup::Kfp_x;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+	else if (!in_param.compare("Kfp_y")) {
+            out_param = lspc::ParameterLookup::Kfp_x;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+	else if (!in_param.compare("Kfp_z")) {
+            out_param = lspc::ParameterLookup::Kfp_z;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+	else if (!in_param.compare("Kfv_x")) {
+            out_param = lspc::ParameterLookup::Kfv_x;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+	else if (!in_param.compare("Kfv_y")) {
+            out_param = lspc::ParameterLookup::Kfv_y;
+            out_valueType = lspc::ParameterLookup::_float;
+        }
+	else if (!in_param.compare("Kfv_z")) {
+            out_param = lspc::ParameterLookup::Kfv_z;
             out_valueType = lspc::ParameterLookup::_float;
         }
         else if (!in_param.compare("Kv_x")) {
@@ -1611,6 +1639,23 @@ void reconfigureCallback(kugle_driver::ParametersConfig &config, uint32_t level,
         config.K_z = config.K;
     }
 
+    if (config.Kp_x != reconfigureConfig.Kp_x) reconfigureModifyParameter("controller", "Kf", std::to_string(config.Kfp_x) + " " + std::to_string(config.Kfp_y) + " " + std::to_string(config.Kfp_z) + " " + std::to_string(config.Kfv_x) + " " + std::to_string(config.Kfv_y) + " " + std::to_string(config.Kfv_z), lspcMutex, lspcObj);
+    if (config.Kp_y != reconfigureConfig.Kp_y) reconfigureModifyParameter("controller", "Kf", std::to_string(config.Kfp_x) + " " + std::to_string(config.Kfp_y) + " " + std::to_string(config.Kfp_z) + " " + std::to_string(config.Kfv_x) + " " + std::to_string(config.Kfv_y) + " " + std::to_string(config.Kfv_z), lspcMutex, lspcObj);
+    if (config.Kp_z != reconfigureConfig.Kp_z) reconfigureModifyParameter("controller", "Kf", std::to_string(config.Kfp_x) + " " + std::to_string(config.Kfp_y) + " " + std::to_string(config.Kfp_z) + " " + std::to_string(config.Kfv_x) + " " + std::to_string(config.Kfv_y) + " " + std::to_string(config.Kfv_z), lspcMutex, lspcObj);
+    if (config.Kv_x != reconfigureConfig.Kv_x) reconfigureModifyParameter("controller", "Kf", std::to_string(config.Kfp_x) + " " + std::to_string(config.Kfp_y) + " " + std::to_string(config.Kfp_z) + " " + std::to_string(config.Kfv_x) + " " + std::to_string(config.Kfv_y) + " " + std::to_string(config.Kfv_z), lspcMutex, lspcObj);
+    if (config.Kv_y != reconfigureConfig.Kv_y) reconfigureModifyParameter("controller", "Kf", std::to_string(config.Kfp_x) + " " + std::to_string(config.Kfp_y) + " " + std::to_string(config.Kfp_z) + " " + std::to_string(config.Kfv_x) + " " + std::to_string(config.Kfv_y) + " " + std::to_string(config.Kfv_z), lspcMutex, lspcObj);
+    if (config.Kv_z != reconfigureConfig.Kv_z) reconfigureModifyParameter("controller", "Kf", std::to_string(config.Kfp_x) + " " + std::to_string(config.Kfp_y) + " " + std::to_string(config.Kfp_z) + " " + std::to_string(config.Kfv_x) + " " + std::to_string(config.Kfv_y) + " " + std::to_string(config.Kfv_z), lspcMutex, lspcObj);
+ 
+    if (config.Kf != reconfigureConfig.Kf) {
+        reconfigureModifyParameter("controller", "Kf", std::to_string(config.Kf), lspcMutex, lspcObj);
+        config.Kfp_x = config.Kf;
+        config.Kfp_y = config.Kf;
+        config.Kfp_z = config.Kf;
+        config.Kfv_x = config.Kf;
+        config.Kfv_y = config.Kf;
+        config.Kfv_z = config.Kf;
+    }
+
     if (config.eta_x != reconfigureConfig.eta_x) reconfigureModifyParameter("controller", "eta", std::to_string(config.eta_x) + " " + std::to_string(config.eta_y) + " " + std::to_string(config.eta_z), lspcMutex, lspcObj);
     if (config.eta_y != reconfigureConfig.eta_y) reconfigureModifyParameter("controller", "eta", std::to_string(config.eta_x) + " " + std::to_string(config.eta_y) + " " + std::to_string(config.eta_z), lspcMutex, lspcObj);
     if (config.eta_z != reconfigureConfig.eta_z) reconfigureModifyParameter("controller", "eta", std::to_string(config.eta_x) + " " + std::to_string(config.eta_y) + " " + std::to_string(config.eta_z), lspcMutex, lspcObj);
@@ -1711,6 +1756,22 @@ void LoadParamsIntoReconfigure(std::shared_ptr<std::timed_mutex> lspcMutex, std:
             reconfigureConfig.K_x = Parse2RoundedFloat(values.at(0));
             reconfigureConfig.K_y = Parse2RoundedFloat(values.at(1));
             reconfigureConfig.K_z = Parse2RoundedFloat(values.at(2));
+        }
+    }
+
+    // Load Kf
+    {
+        std::istringstream iss(reconfigureRetrieveParameter("controller", "Kf", lspcMutex, lspcObj));
+        std::vector<std::string> values((std::istream_iterator<std::string>(iss)),  // split string by spaces
+                                        std::istream_iterator<std::string>());
+        reconfigureConfig.Kf = 0;
+        if (values.size() == 6) {
+            reconfigureConfig.Kfp_x = Parse2RoundedFloat(values.at(0));
+            reconfigureConfig.Kfp_y = Parse2RoundedFloat(values.at(1));
+            reconfigureConfig.Kfp_z = Parse2RoundedFloat(values.at(2));
+            reconfigureConfig.Kfv_x = Parse2RoundedFloat(values.at(3));
+            reconfigureConfig.Kfv_y = Parse2RoundedFloat(values.at(4));
+            reconfigureConfig.Kfv_z = Parse2RoundedFloat(values.at(5));
         }
     }
 
