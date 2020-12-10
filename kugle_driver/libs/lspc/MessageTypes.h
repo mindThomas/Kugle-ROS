@@ -86,6 +86,13 @@ namespace lspc
 			Kx,
 			Ky,
 			Kz,
+			Kf,
+			Kfp_x,
+			Kfp_y,
+			Kfp_z,
+			Kfv_x,
+			Kfv_y,
+			Kfv_z,
 			Kv_x,
 			Kv_y,
 			Kvi_x,
@@ -181,7 +188,8 @@ namespace lspc
 		typedef enum: uint8_t {
 			UNKNOWN_CONTROLLER = 0x00,
 			LQR_CONTROLLER = 0x01,
-			SLIDING_MODE_CONTROLLER
+			SLIDING_MODE_CONTROLLER = 0x02,
+			FEEDBACK_LINEARIZATION_CONTROLLER = 0x03
 		} controllerType_t;
 
 		typedef enum: uint8_t {
